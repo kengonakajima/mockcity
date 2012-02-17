@@ -4,6 +4,8 @@
 -- http://getmoai.com
 ----------------------------------------------------------------
 
+require "./util"
+
 SCRW, SCRH = 960, 640
 
 MOAISim.openWindow ( "test", SCRW, SCRH )
@@ -61,7 +63,7 @@ end
 -- 1110 R
 -- 1111 N
 function makeHeightMapMesh(sz,w,h,hdata, tdata )
-  print("makeHeightMapMesh: sz:",sz, "w:",w,"h:",h,"dat:",#hdata, #tdata)
+--  print("makeHeightMapMesh: sz:",sz, "w:",w,"h:",h,"dat:",#hdata, #tdata)
   -- 頂点を用意
   local vf = MOAIVertexFormat.new()
   vf:declareCoord ( 1, MOAIVertexFormat.GL_FLOAT, 3 )
@@ -184,6 +186,15 @@ function Field(w,h)
     local i = self.width * z + x + 1
     self.heights[i] = h
   end
+  function f:setType(x,z,t)
+    local i = self.width * z + x + 1
+    self.types[i] = t
+  end
+  --h,tをかえす
+  function f:get(x,z)
+    local i = self.width * z + x + 1
+    return self.heights[i] or 0, self.types[i] or CELLTYPE.GRASS
+  end
   
   -- heights, typesをかえす
   function f:getRect( basex, basez, w,h )
@@ -204,22 +215,60 @@ function Field(w,h)
     return outh, outt
   end
 
-  function f:generate()
+  -- ある地点を1個盛り上げる
+  function f:landup(x,z)
+    local h = self:get(x,z)
+    self:setHeight(x,z,h+1)
+    self:checkSlopeUp(x,z,h+1)
+  end
+  -- 斜面の傾きが2以上だったらもりあげる
+  f.dxdzTable = { {-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
+  function f:checkSlopeUp(x,z,newh)
 
+    for i,dxdz in ipairs(self.dxdzTable) do
+      local dx,dz = dxdz[1], dxdz[2]
+      local h,t = self:get(x+dx,z+dz)
+      if h < newh-1 then
+        self:setHeight(x+dx,z+dz,h+1)
+        self:checkSlopeUp(x+dx,z+dz,h+1)
+      end
+    end
+  end
+
+  -- tで塗る
+  function f:fillCircle(cx,cz,dia,t)
+    scanCircle( cx,cz, dia,1, function(x,z)
+        self:setType(x,z,t)
+      end)
+  end
+  
+  function f:generate()
     local cnt = 1
     for z=1,h do
       for x=1,w do
-        if math.random() > 0.7 then
-          f.heights[cnt] = 1
-        end
+
         if math.random() > 0.9 then
           f.types[cnt] = CELLTYPE.SAND
         end
+
+        if math.random() > 0.99 then
+          self:fillCircle( x,z, range(1,5),CELLTYPE.SAND )          
+        end
+        if math.random() > 0.99 then
+          local upN = range(2,5)
+          for i=1,upN do
+            self:landup(x,z)
+          end
+        end
+        
         cnt = cnt + 1
       end
     end
-    
 
+    for i=1,10 do
+      self:landup(20,20)
+    end
+    
       
     -- 固定のマップを書き込む(デバッグ用)
     local htbl = {
@@ -361,6 +410,7 @@ th:run(function()
       if keyState[13] then -- enter
       end
 
+      cz = cy
       camera:setLoc( cx, cy, cz )
 
       coroutine.yield()
