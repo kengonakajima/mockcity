@@ -410,7 +410,7 @@ th:run(function()
       if keyState[13] then -- enter
       end
 
-      cz = cy
+      cz = cy * 0.5
       camera:setLoc( cx, cy, cz )
 
       coroutine.yield()
