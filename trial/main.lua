@@ -312,18 +312,70 @@ function makeHMProp(vx,vz)
   p:setDeck(hm)
   p:setCullMode( MOAIProp.CULL_BACK )
   p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
-  p:moveRot( 0, 180, 0, 30 )
   local x,z = vx * sz,  vz * sz 
   p:setLoc(x, 0, z )
   return p
 end
 
+
+
 keyState={}
 function onKeyboardEvent(k,dn)
   keyState[k] = dn
 end
-
 MOAIInputMgr.device.keyboard:setCallback( onKeyboardEvent )
+
+-- t,u,v をかえす
+function triangleIntersect( orig, dir, v0,v1,v2 )
+  local e1 = vec3sub(v1,v0)
+  local e2 = vec3sub(v2,v0)
+  local pvec = vec3cross(dir,e2)
+  local det = vec3dot(e1,pvec)
+  
+  local tvec = vec3sub(orig,v0)
+  local u = vec3dot(tvec,pvec)
+  local qvec
+  local v
+  if det > 1e-3 then
+    if u < 0 or u > det then return nil end
+    qvec = vec3cross(tvec,e1)
+    print("b",qvec)    
+    v = vec3dot(dir,qvec)
+    if v < 0 or u+v >det then return nil end
+  elseif det < - 1e-3 then
+    if u > 0 or u < det then return nil end
+    qvec = vec3cross(tvec,e1)
+    print("a")
+    v = vec3dot(dir,qvec)
+    if v > 0 or u+v <det then return nil end
+  else
+    return nil
+  end
+  local inv_det = 1 / det  
+  local t = vec3dot(e2,qvec)
+  t = t * inv_det * -1
+  u = u * inv_det
+  v = v * inv_det
+  return t,u,v
+end
+
+function onPointerEvent(mousex,mousey)
+  local px,py,pz, xn,yn,zn = layer:wndToWorld(mousex,mousey)
+  print("pointer:",x,y, px,py,pz, xn,yn,zn )
+
+  local camx,camy,camz = camera:getLoc()
+
+  local t,u,v = triangleIntersect( {x=camx,y=camy,z=camz}, {x=xn,y=yn,z=zn}, {x=0,y=0,z=0}, {x=32,y=0,z=32},{x=32,y=0,z=0} )
+  if t then
+    local hitx,hity,hitz = camx + xn*t, camy + yn*t, camz + zn*t
+    print( "hit:",hitx,hity,hitz,t,u,v)
+  else
+    print("nohit")
+  end
+  
+end
+
+MOAIInputMgr.device.pointer:setCallback( onPointerEvent )
 
 
 chunks={}

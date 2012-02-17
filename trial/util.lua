@@ -214,3 +214,21 @@ function scanRect(x0,y0,x1,y1,fn)
       end
    end
 end
+
+--差
+function vec3sub(va,vb)
+  return { x = vb.x-va.x, y = vb.y-va.y, z = vb.z-va.z }
+end
+--out:vec
+function vec3cross(v1,v2)
+  local x1,y1,z1 = v1.x, v1.y, v1.z
+  local x2,y2,z2 = v2.x, v2.y, v2.z
+  return { 
+    x = y1 * z2 - z1 * y2,
+    y = z1 * x2 - x1 * z2,
+    z = x1 * y2 - y1 * x2
+  }
+end
+function vec3dot(v1,v2)
+  return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
+end
