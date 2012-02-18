@@ -64,14 +64,15 @@ end
 function makeCursor()
   local p = MOAIProp.new()
   p:setDeck(cursorDeck)
-  p:setScl(0.3,0.5,0.5)
+  p:setScl(0.3,0.3,0.3)
+  p:setRot(-45,0,0)
 --  p:setCullMode( MOAIProp.CULL_BACK)
 --  p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
   function p:setAtGrid(x,z)
     local xx,zz = x * CELLUNITSZ, z * CELLUNITSZ
     local h,t = fld:get( x,z )
     local yy = h * CELLUNITSZ
-    self:setLoc(xx + scrollX,yy + CELLUNITSZ/2, zz + scrollZ)
+    self:setLoc(xx + scrollX,yy + CELLUNITSZ, zz + scrollZ)
     self.lastGridX, self.lastGridZ = x,z
   end 
   return p
