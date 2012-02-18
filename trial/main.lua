@@ -82,11 +82,11 @@ function onPointerEvent(mousex,mousey)
   local ctlx,ctlz = fld:findControlPoint( camx, camy, camz, xn,yn,zn )
   print("controlpoint:", ctlx, ctlz )
 
-  local t,u,v = triangleIntersect( {x=camx,y=camy,z=camz}, {x=xn,y=yn,z=zn}, {x=0,y=0,z=0}, {x=32,y=0,z=32},{x=32,y=0,z=0} )
-  if t then
-    local hitx,hity,hitz = camx + xn*t, camy + yn*t, camz + zn*t
-    print( "hit:",hitx,hity,hitz,t,u,v)
-  end
+--  local t,u,v = triangleIntersect( {x=camx,y=camy,z=camz}, {x=xn,y=yn,z=zn}, {x=0,y=0,z=0}, {x=32,y=0,z=32},{x=32,y=0,z=0} )
+--  if t then
+--    local hitx,hity,hitz = camx + xn*t, camy + yn*t, camz + zn*t
+--    print( "hit:",hitx,hity,hitz,t,u,v)
+--  end
   
 end
 

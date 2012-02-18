@@ -1,3 +1,36 @@
+-- 3D utils
+function getDefaultVertexFormat()
+  local vf = MOAIVertexFormat.new()
+  vf:declareCoord ( 1, MOAIVertexFormat.GL_FLOAT, 3 )
+  vf:declareUV ( 2, MOAIVertexFormat.GL_FLOAT, 2 )
+  vf:declareColor ( 3, MOAIVertexFormat.GL_UNSIGNED_BYTE )
+  return vf
+end
+
+function makeVertexBuffer(nVert)
+  local vf = getDefaultVertexFormat()
+  local vb = MOAIVertexBuffer.new()
+  vb:setFormat(vf)
+  vb:reserveVerts( nVert )
+
+  function vb:pushVert(x,y,z, u,v)
+    self:writeFloat( x,y,z )
+    self:writeFloat( u,v )
+    self:writeColor32( 1,1,1 )        
+  end
+      
+  return vb
+end
+
+function makeIndexBuffer(nIndex)
+  local ib = MOAIIndexBuffer.new()
+  ib:reserve( nIndex )
+  return ib
+end
+
+
+--
+
 DECKDIV = 8
 DECKSTEP = 1/DECKDIV
 function tileIndexToUV(ind)
@@ -32,11 +65,6 @@ end
 function makeHeightMapMesh(sz,w,h,hdata, tdata )
 --  print("makeHeightMapMesh: sz:",sz, "w:",w,"h:",h,"dat:",#hdata, #tdata)
   -- 頂点を用意
-  local vf = MOAIVertexFormat.new()
-  vf:declareCoord ( 1, MOAIVertexFormat.GL_FLOAT, 3 )
-  vf:declareUV ( 2, MOAIVertexFormat.GL_FLOAT, 2 )
-  vf:declareColor ( 3, MOAIVertexFormat.GL_UNSIGNED_BYTE )
-
   local vertNum = w * h
   local cellNum = (w-1) * (h-1)
   local triNum = cellNum * 2
@@ -44,12 +72,8 @@ function makeHeightMapMesh(sz,w,h,hdata, tdata )
   assert( vertNum == #hdata)
   assert( vertNum == #tdata)
   
-  local vb = MOAIVertexBuffer.new()
-  vb:setFormat(vf)
-  vb:reserveVerts( cellNum * 6 )
-
-  local ib = MOAIIndexBuffer.new()
-  ib:reserve( triNum * 3 )
+  local vb = makeVertexBuffer(cellNum * 6 )
+  local ib = makeIndexBuffer( triNum * 3 )
 
   -- 3角形の数だけ回す
   local indexCnt, cellCnt = 1,1
@@ -70,35 +94,27 @@ function makeHeightMapMesh(sz,w,h,hdata, tdata )
       if rightBottomHeight < leftBottomHeight and rightBottomHeight == rightTopHeight and rightTopHeight == leftTopHeight and leftTopHeight < leftBottomHeight then
         normalDiv = false
       end
-      
 
       local baseU, baseV = tileIndexToUV( tdata[fieldVertInd] )
-
-      function pushVert(x,y,z, u,v)
-        vb:writeFloat( x,y,z )
-        vb:writeFloat( u,v )
-        vb:writeColor32( 1,1,1 )        
-      end
-
       local baseVertOffset = (cellCnt-1) * 6
       
       if normalDiv then
         -- 頂点(別々にUVで影をつけるので三角2個で6頂点必要        
-        pushVert( basex, leftTopHeight, basez, baseU, baseV ) -- A
-        pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV ) -- B
-        pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP )  -- C
+        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV ) -- A
+        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV ) -- B
+        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP )  -- C
         
-        pushVert( basex, leftTopHeight, basez,  baseU, baseV )-- A
-        pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP ) -- C
-        pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP ) -- D
+        vb:pushVert( basex, leftTopHeight, basez,  baseU, baseV )-- A
+        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP ) -- C
+        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP ) -- D
       else
-        pushVert( basex, leftTopHeight, basez, baseU, baseV ) --A
-        pushVert( basex+sz, rightTopHeight, basez, baseU + DECKSTEP, baseV ) --B
-        pushVert( basex, leftBottomHeight, basez+sz, baseU, baseV + DECKSTEP ) --D
+        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV ) --A
+        vb:pushVert( basex+sz, rightTopHeight, basez, baseU + DECKSTEP, baseV ) --B
+        vb:pushVert( basex, leftBottomHeight, basez+sz, baseU, baseV + DECKSTEP ) --D
 
-        pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV ) -- B
-        pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP ) -- C
-        pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP ) -- D
+        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV ) -- B
+        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP ) -- C
+        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP ) -- D
       end
       
       -- 左側の三角形
@@ -124,6 +140,9 @@ function makeHeightMapMesh(sz,w,h,hdata, tdata )
   return mesh  
 end
 
+function makeSquareBoardMesh()
+  
+end
 
 function makeTriangleMesh(w)
   local vertexFormat = MOAIVertexFormat.new ()
