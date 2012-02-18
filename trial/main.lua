@@ -79,7 +79,7 @@ function onPointerEvent(mousex,mousey)
 
   local camx,camy,camz = camera:getLoc()
 
-  local ctlx,ctlz = fld:findControlPoint( camx, camy, camz, xn,yn,zn )
+  local ctlx,ctlz = fld:findControlPoint( camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
   print("controlpoint:", ctlx, ctlz )
 
 --  local t,u,v = triangleIntersect( {x=camx,y=camy,z=camz}, {x=xn,y=yn,z=zn}, {x=0,y=0,z=0}, {x=32,y=0,z=32},{x=32,y=0,z=0} )
@@ -124,12 +124,14 @@ end
 
 
 ----------------
-function moveWorld(dx,dy,dz)
+scrollX, scrollZ = 0, 0
+function moveWorld(dx,dz)
   for i,p in ipairs(chunks) do
     local x,y,z = p:getLoc()
-    x,y,z = x+dx, y+dy, z+dz
+    x,z = x+dx, z+dz
     p:setLoc(x,y,z)
   end
+  scrollX, scrollZ = scrollX + dx, scrollZ + dz
 end
 
 camera.flyUp = true
@@ -144,16 +146,16 @@ th:run(function()
 
       local camSpeed = cy / 50
       if keyState[119] then --w
-        moveWorld(0,0,camSpeed)
+        moveWorld(0,camSpeed)
       end
       if keyState[115] then --s
-        moveWorld(0,0,-camSpeed)
+        moveWorld(0,-camSpeed)
       end
       if keyState[100] then --d
-        moveWorld(-camSpeed,0,0)
+        moveWorld(-camSpeed,0)
       end
       if keyState[97] then --a
-        moveWorld(camSpeed,0,0)
+        moveWorld(camSpeed,0)
       end
       if keyState[101] then --e
       end
