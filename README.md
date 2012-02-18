@@ -8,9 +8,9 @@ Usage
 ====
 On Mac OSX Lion : 
 
- 1. git clone https://github.com/kengonakajima/mocc
- 2. cd mocc/client
- 3. ./runmocc.sh
+    shell> git clone https://github.com/kengonakajima/mocc
+    shell> cd mocc/client
+    shell> ./runmocc.sh
  
 
 Project Milestones
