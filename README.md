@@ -3,11 +3,9 @@ MOCC - Massively Online City Constructor (client)
 Enjoy constructing your own city with friends 
 in MMO, shared, persistent and dynamic world.
 
+For latest information, look at [Announcements](https://github.com/kengonakajima/mocc/tree/master/ann)
 
-Announcements
-====
-Look at [Announcements](https://github.com/kengonakajima/mocc/tree/master/ann)
-
+Usage
 ====
 On Mac OSX Lion : 
 
