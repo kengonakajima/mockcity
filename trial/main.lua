@@ -18,20 +18,17 @@ viewport = MOAIViewport.new ()
 viewport:setSize ( SCRW, SCRH )
 viewport:setScale ( SCRW, SCRH )
 
-layer = MOAILayer.new ()
-layer:setViewport ( viewport )
-layer:setSortMode ( MOAILayer.SORT_NONE ) -- don't need layer sort
-MOAISim.pushRenderPass ( layer )
+fieldLayer = MOAILayer.new()
+fieldLayer:setViewport(viewport)
+fieldLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
+MOAISim.pushRenderPass(fieldLayer)
 
 
-function loadTex( path )
-  local t = MOAITexture.new()
-  t:load( path )
-  return t
-end
 
 whiteDeck = loadTex( "white.png" )
 baseDeck = loadTex( "../images/citybase.png" )
+cursorDeck = loadGfxQuad( "../images/cursor.png" )
+
 
 
 CELLTYPE={
@@ -64,6 +61,22 @@ function makeHMProp(vx,vz)
   return p
 end
 
+function makeCursor()
+  local p = MOAIProp.new()
+  p:setDeck(cursorDeck)
+  p:setScl(0.3,0.5,0.5)
+--  p:setCullMode( MOAIProp.CULL_BACK)
+--  p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
+  function p:setAtGrid(x,z)
+    local xx,zz = x * CELLUNITSZ, z * CELLUNITSZ
+    local h,t = fld:get( x,z )
+    local yy = h * CELLUNITSZ
+    self:setLoc(xx + scrollX,yy + CELLUNITSZ/2, zz + scrollZ)
+    self.lastGridX, self.lastGridZ = x,z
+  end 
+  return p
+end
+
 
 
 keyState={}
@@ -72,36 +85,84 @@ function onKeyboardEvent(k,dn)
 end
 MOAIInputMgr.device.keyboard:setCallback( onKeyboardEvent )
 
+lastPointerX,lastPointerY=nil,nil
 
 function onPointerEvent(mousex,mousey)
-  local px,py,pz, xn,yn,zn = layer:wndToWorld(mousex,mousey)
-  print("pointer:", px,py,pz, xn,yn,zn )
-
-  local camx,camy,camz = camera:getLoc()
-
-  local ctlx,ctlz = fld:findControlPoint( camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
-  print("controlpoint:", ctlx, ctlz )
-
---  local t,u,v = triangleIntersect( {x=camx,y=camy,z=camz}, {x=xn,y=yn,z=zn}, {x=0,y=0,z=0}, {x=32,y=0,z=32},{x=32,y=0,z=0} )
---  if t then
---    local hitx,hity,hitz = camx + xn*t, camy + yn*t, camz + zn*t
---    print( "hit:",hitx,hity,hitz,t,u,v)
---  end
+  lastPointerX, lastPointerY = mousex, mousey
   
 end
 
 MOAIInputMgr.device.pointer:setCallback( onPointerEvent )
 
+function onMouseLeftEvent(down)
+  if not down then return end
+  if not lastPointerX then return end
+  
+  if not cursorProp or not cursorProp.lastGridX then return end
+  local curx,cury,curz = cursorProp:getLoc()
+  if cury < 0 then return end
+  
+  local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
+  print( "1up:", x,z )
+
+  function updateCallback(x,z)
+    local chx, chz = int( x / CHUNKSZ ), int( z / CHUNKSZ )
+    for i,chunk in ipairs(chunks) do
+      if chunk.chx >= chx-1 and chunk.chx <= chx+1 and chunk.chz >= chz-1 and chunk.chz <= chz+1 then
+        chunk.toUpdate = true
+      end          
+    end        
+  end
+  fld:landup( x,z, updateCallback  )
+
+  -- check updated chunks
+  local toRemove, toReallocate = {}, {}
+  for i,chunk in ipairs(chunks) do
+    if chunk.toUpdate then
+      chunk.toUpdate = false
+      table.insert(toRemove,chunk)
+      local posx, posy, posz = chunk:getLoc()
+      table.insert(toReallocate, {chx=chunk.chx,chz=chunk.chz,prio=chunk:getPriority(), posx = posx, posy=posy, posz=posz} )
+    end
+  end
+  print("AAAAAAAA:", #chunks )
+  for i,chunk in ipairs(toRemove) do
+    print("chunk",  chunk.chx, chunk.chz, "to update.")
+    fieldLayer:removeProp(chunk)
+    for j,ch in ipairs(chunks) do
+      if ch == chunk then
+        table.remove(chunks,j)
+        break
+      end
+    end    
+  end
+  print("BBBBBBBB:", #chunks )  
+  for i,v in ipairs(toReallocate) do
+    local p = updateChunk( v.chx, v.chz )
+    p:setPriority( v.prio )
+    p:setLoc( v.posx, v.posy, v.posz )
+  end
+  cursorProp:setAtGrid( x,z )
+end
+
+MOAIInputMgr.device.mouseLeft:setCallback( onMouseLeftEvent )
+
+function updateChunk(chx,chz)
+  local p = makeHMProp(chx*CHUNKSZ,chz*CHUNKSZ)
+  fieldLayer:insertProp(p)
+  p.chx, p.chz = chx, chz
+  table.insert(chunks,p)
+  return p
+end
 
 chunks={}
 CHUNKRANGE = 16
-for chy=1,CHUNKRANGE do
-  for chx=1,CHUNKRANGE do
-    local p = makeHMProp((chx-1)*CHUNKSZ,(chy-1)*CHUNKSZ)
-    layer:insertProp(p)
-    table.insert(chunks,p)
+for chz=0,CHUNKRANGE-1 do
+  for chx=0,CHUNKRANGE-1 do
+    updateChunk(chx,chz)
   end
 end
+
 
 ---------------------------
 
@@ -109,7 +170,7 @@ end
 camera = MOAICamera3D.new ()
 local z = camera:getFocalLength ( SCRW )
 camera:setLoc ( 0, 1000, 800 )
-layer:setCamera ( camera )
+fieldLayer:setCamera ( camera )
 camera:setRot(-15,0,0)
 
 function angle(x,y)
@@ -121,6 +182,12 @@ function angle(x,y)
   end
   return s
 end
+
+
+cursorProp = makeCursor()
+cursorProp:setLoc(0,CELLUNITSZ/2,0)
+fieldLayer:insertProp(cursorProp)
+
 
 
 ----------------
@@ -182,6 +249,21 @@ th:run(function()
       cz = cy * 0.5
       camera:setLoc( cx, cy, cz )
 
+      -- update cursor
+      local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
+      print("pointer:", px,py,pz, xn,yn,zn )
+
+      local camx,camy,camz = camera:getLoc()
+
+      local ctlx,ctlz = fld:findControlPoint( camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+      if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
+        print("controlpoint:", ctlx, ctlz )
+        cursorProp:setAtGrid(ctlx,ctlz)
+      else
+        cursorProp:setLoc(0,-999999,0) -- disappear
+      end
+
+  
       coroutine.yield()
     end
   end)

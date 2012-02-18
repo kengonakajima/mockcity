@@ -58,21 +58,22 @@ function Field(w,h)
   end
 
   -- ある地点を1個盛り上げる
-  function f:landup(x,z)
+  function f:landup(x,z,callback)
     local h = self:get(x,z)
     self:setHeight(x,z,h+1)
-    self:checkSlopeUp(x,z,h+1)
+    if callback then callback(x,z) end
+    self:checkSlopeUp(x,z,h+1,callback)
   end
   -- 斜面の傾きが2以上だったらもりあげる
   f.dxdzTable = { {-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
-  function f:checkSlopeUp(x,z,newh)
-
+  function f:checkSlopeUp(x,z,newh,callback)
     for i,dxdz in ipairs(self.dxdzTable) do
       local dx,dz = dxdz[1], dxdz[2]
       local h,t = self:get(x+dx,z+dz)
       if h < newh-1 then
         self:setHeight(x+dx,z+dz,h+1)
-        self:checkSlopeUp(x+dx,z+dz,h+1)
+        if callback then callback(x+dx,z+dz) end
+        self:checkSlopeUp(x+dx,z+dz,h+1,callback)
       end
     end
   end

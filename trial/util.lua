@@ -276,3 +276,18 @@ function triangleIntersect( orig, dir, v0,v1,v2 )
   v = v * inv_det
   return t,u,v
 end
+
+
+function loadTex( path )
+  local t = MOAITexture.new()
+  t:load( path )
+  return t
+end
+
+function loadGfxQuad( path )
+  local gq = MOAIGfxQuad2D.new()
+  gq:setTexture( path )
+  gq:setRect( -64,-64,64,64 )
+  gq:setUVRect( 0,1,1,0)
+  return gq    
+end

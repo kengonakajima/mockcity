@@ -28,6 +28,15 @@ function makeIndexBuffer(nIndex)
   return ib
 end
 
+function makeMesh(deck, vb, ib )
+  local mesh = MOAIMesh.new()
+  mesh:setTexture( deck ) --"white.png")
+  mesh:setVertexBuffer(vb)
+  mesh:setIndexBuffer(ib)
+  mesh:setPrimType( MOAIMesh.GL_TRIANGLES )
+  return mesh
+end
+
 
 --
 
@@ -132,16 +141,31 @@ function makeHeightMapMesh(sz,w,h,hdata, tdata )
   end
   vb:bless()
 
-  local mesh = MOAIMesh.new()
-  mesh:setTexture( baseDeck ) --"white.png")
-  mesh:setVertexBuffer(vb)
-  mesh:setIndexBuffer(ib)
-  mesh:setPrimType( MOAIMesh.GL_TRIANGLES )
-  return mesh  
+  return makeMesh( baseDeck, vb, ib )
 end
 
-function makeSquareBoardMesh()
+-- boardなので、 垂直に立っているmesh. z=0
+function makeSquareBoardMesh(deck,index)
+  local vb = makeVertexBuffer( 4 )
+  local ib = makeIndexBuffer( 2 * 3 )
+  -- A-B
+  -- |\|
+  -- D-C
+  local u,v = tileIndexToUV(index)
+  vb:pushVert( -16, 16, 0,   u,v ) -- A
+  vb:pushVert( 16, 16, 0,    u+DECKSTEP,v ) -- B
+  vb:pushVert( 16, -16, 0,   u+DECKSTEP,v+DECKSTEP ) -- C
+  vb:pushVert( -16, -16, 0,  u, v+DECKSTEP ) --D
+  -- ABC
+  ib:setIndex( 1, 1 )
+  ib:setIndex( 2, 3 )
+  ib:setIndex( 3, 2 )
+  ib:setIndex( 4, 1 )
+  ib:setIndex( 5, 4 )
+  ib:setIndex( 6, 3 )
   
+  vb:bless()
+  return makeMesh( baseDeck, vb, ib )
 end
 
 function makeTriangleMesh(w)
