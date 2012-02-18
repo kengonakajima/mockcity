@@ -4,7 +4,10 @@ Enjoy constructing your own city with friends
 in MMO, shared, persistent and dynamic world.
 
 
-Usage
+Announcements
+====
+Look at [Announcements](https://github.com/kengonakajima/mocc/tree/master/ann)
+
 ====
 On Mac OSX Lion : 
 
