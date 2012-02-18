@@ -72,7 +72,7 @@ function makeCursor()
     local xx,zz = x * CELLUNITSZ, z * CELLUNITSZ
     local h,t = fld:get( x,z )
     local yy = h * CELLUNITSZ
-    self:setLoc(xx + scrollX,yy + CELLUNITSZ, zz + scrollZ)
+    self:setLoc(xx + scrollX,yy + CELLUNITSZ/2, zz + scrollZ)
     self.lastGridX, self.lastGridZ = x,z
   end 
   return p
