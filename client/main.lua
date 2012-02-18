@@ -26,8 +26,8 @@ MOAISim.pushRenderPass(fieldLayer)
 
 
 whiteDeck = loadTex( "white.png" )
-baseDeck = loadTex( "../images/citybase.png" )
-cursorDeck = loadGfxQuad( "../images/cursor.png" )
+baseDeck = loadTex( "./images/citybase.png" )
+cursorDeck = loadGfxQuad( "./images/cursor.png" )
 
 
 
