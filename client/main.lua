@@ -1,7 +1,7 @@
 ----------------------------------------------------------------
--- Copyright (c) 2010-2011 Zipline Games, Inc. 
+-- Copyright (c) 2010-2011 Kengo Nakajima.
 -- All Rights Reserved. 
--- http://getmoai.com
+-- http://twitter.com/ringo
 ----------------------------------------------------------------
 
 require "./util"
