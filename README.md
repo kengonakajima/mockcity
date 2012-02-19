@@ -1,9 +1,10 @@
-MOCC - Massively Online City Constructor (client)
+mocc - Massively Online City Constructor (client)
 ====
 Enjoy constructing your own city with friends 
 in MMO, shared, persistent and dynamic world.
 
-For latest information, look at [Announcements](https://github.com/kengonakajima/mocc/tree/master/ann)
+For project update info, visit <a href="http://playmocc.blogspot.com/">playmocc.blogspot.com</a>
+
 
 Usage
 ====
