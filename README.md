@@ -3,7 +3,7 @@ mocc - Massively Online City Constructor (client)
 Enjoy constructing your own city with friends 
 in MMO, shared, persistent and dynamic world.
 
-For project update info, visit <a href="http://playmocc.blogspot.com/">playmocc.blogspot.com</a>
+For project updates, visit <a href="http://playmocc.blogspot.com/">playmocc.blogspot.com</a>
 
 
 Usage
