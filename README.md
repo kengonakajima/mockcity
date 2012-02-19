@@ -1,4 +1,4 @@
-mocc - Massively Online City Constructor (client)
+Mocc - Massively Online City Constructor (client)
 ====
 Enjoy constructing your own city with friends 
 in MMO, shared, persistent and dynamic world.
