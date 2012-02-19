@@ -1,7 +1,9 @@
-MockCity - Massively Online City Constructor (client)
+MockCity - Massively Multiplayer Online City Constructor
 ====
 Enjoy constructing your own city with friends 
 in MMO, shared, persistent and dynamic world.
+
+This repositry includes only client software.
 
 For project updates, visit <a href="http://playmockcity.blogspot.com/">playmockcity.blogspot.com</a>
 
@@ -31,7 +33,7 @@ Project Milestones
 
 Servers
 ====
- - Server will only available as a hosted API, no source code would available.
+ - Server will only available as a hosted API, no source code would be available.
  - Access to the dedicated servers will be charged in any time at future.
 
 Protocol
