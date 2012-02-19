@@ -56,6 +56,6 @@ Now Moai SDK 1.0 will have 3D in official default releases, but not yet.(2012/02
 License
 ====
  - This software is distributed under [CPAL 1.0](http://opensource.org/licenses/cpal_1.0) .
- - You can freely create your own servers and use this software with them.
+ - You can freely fork this and create your own servers and use this software with them.
 
 
