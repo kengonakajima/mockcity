@@ -1,18 +1,18 @@
-Mocc - Massively Online City Constructor (client)
+MockCity - Massively Online City Constructor (client)
 ====
 Enjoy constructing your own city with friends 
 in MMO, shared, persistent and dynamic world.
 
-For project updates, visit <a href="http://playmocc.blogspot.com/">playmocc.blogspot.com</a>
+For project updates, visit <a href="http://playmockcity.blogspot.com/">playmockcity.blogspot.com</a>
 
 
 Usage
 ====
 On Mac OSX Lion : 
 
-    shell> git clone https://github.com/kengonakajima/mocc
-    shell> cd mocc/client
-    shell> ./runmocc.sh
+    shell> git clone https://github.com/kengonakajima/mockcity
+    shell> cd mockcity/client
+    shell> ./runmock.sh
  
 
 Project Milestones
@@ -41,7 +41,7 @@ TODO: document or link to the source
 
 Moai SDK
 ====
-Moai binary is put in mocc/bin. 
+Moai binary is put in bin directory.
 
 These binaries are built on my machine.
 
