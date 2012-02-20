@@ -128,6 +128,7 @@ function initButtons()
   local x,y = baseX, baseY
   y = y - BUTTONSIZE
   upButton = makeButton( "up", x,y, guiDeck, 4, 49, function(down)
+      print("down:",down)
       if down then
         selectButton(upButton)
       end      
@@ -149,7 +150,9 @@ function initButtons()
         end
       end
     else
-      setDarkAroundCursor(lastControlX,lastControlZ)
+      if lastControlX then
+        setDarkAroundCursor(lastControlX,lastControlZ)
+      end      
     end
   end
 end
@@ -184,7 +187,7 @@ function onMouseLeftEvent(down)
 
   -- GUIs are always 1st priority
   local wx,wy = hudLayer:wndToWorld(lastPointerX,lastPointerY)
-  if processButtonMouseEvent(wx,wy) then
+  if processButtonMouseEvent(wx,wy,down) then
     return
   end
   

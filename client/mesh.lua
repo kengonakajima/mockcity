@@ -134,23 +134,31 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
         vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, 1,0,0 ) -- A
         vb:pushVert( basex + sz, rightTopHeight, basez,  baseU,baseV, 1,0,0 ) -- B
         vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,0,0 )  -- C
-        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,0,0 ) -- D          
+        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,0,0 ) -- D
         -- A-B
         ib:setIndex( indexCnt, 1 + baseVertOffset )
         ib:setIndex( indexCnt+1, 2 + baseVertOffset )
         -- B-C
         ib:setIndex( indexCnt+2, 2 + baseVertOffset )
         ib:setIndex( indexCnt+3, 3 + baseVertOffset )
-        -- C-A
-        ib:setIndex( indexCnt+4, 3 + baseVertOffset )
-        ib:setIndex( indexCnt+5, 1 + baseVertOffset )
+        if normalDiv then
+          -- C-A
+          ib:setIndex( indexCnt+4, 3 + baseVertOffset )
+          ib:setIndex( indexCnt+5, 1 + baseVertOffset )
+        else
+          -- D-B
+          ib:setIndex( indexCnt+4, 2 + baseVertOffset )
+          ib:setIndex( indexCnt+5, 4 + baseVertOffset )          
+        end        
         -- A-D
         ib:setIndex( indexCnt+6, 1 + baseVertOffset )
         ib:setIndex( indexCnt+7, 4 + baseVertOffset )
         -- D-C
         ib:setIndex( indexCnt+8, 4 + baseVertOffset )
         ib:setIndex( indexCnt+9, 3 + baseVertOffset )
+          
 
+        
         indexCnt = indexCnt + 10
       else
 

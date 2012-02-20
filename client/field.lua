@@ -61,12 +61,10 @@ function Field(w,h)
         outmh[outi] = mockh
         if mockh < height then
           validMockNum = validMockNum + 1
-          print("negative mockh:",x,z)
           outred[outi] = true
-          if (outi-1)>=1 then outred[outi - 1] = true end
-          if (outi-self.width) >= 1 then
-            outred[outi - self.width] = true
-          end
+          if (outi-1)>=1 then outred[outi - 1] = true end -- left
+          if (outi-w) >= 1 then outred[outi-w] = true end -- up
+          if (outi-w-1) >= 1 then outred[outi-w-1] = true end -- left up
         elseif mockh > height then
           validMockNum = validMockNum + 1
         else
@@ -91,6 +89,7 @@ function Field(w,h)
   function f:landMod(x,z,mod,callback)
     assert( mod == 1 or mod == -1 )
     local h = self:get(x,z)
+    if h <= 0 and mod == -1 then return end
     self:setHeight(x,z,h+mod)
     if callback then callback(x,z) end
     self:checkSlopeMod(x,z,h,mod,callback)
@@ -190,9 +189,9 @@ function Field(w,h)
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,1,1,0,0,0,0,0,0,0,0,0},
       {0,0,1,1,0,0,0,1,1,1,1,0,0},
-      {0,0,0,0,0,1,1,1,0,0,1,0,0},
-      {0,0,1,0,0,1,2,1,0,0,1,0,0},
-      {0,0,0,0,0,1,1,1,0,0,1,0,0},
+      {0,0,0,0,0,0,1,1,1,0,1,0,0},
+      {0,0,0,0,0,0,1,2,1,0,1,0,0},
+      {0,0,1,0,0,0,1,1,1,0,1,0,0},
       {0,0,0,0,0,0,0,1,1,1,1,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -202,10 +201,10 @@ function Field(w,h)
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},      
-      {0,0,0,1,1,0,0,0,0,0,0,0,0},
-      {0,0,0,1,1,0,0,0,1,1,1,1,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,1,1,1,1,0},
       {0,0,0,0,0,0,0,1,1,2,2,1,0},
-      {0,0,0,1,0,0,0,1,1,2,2,1,0},
+      {0,0,0,0,0,0,0,1,1,2,2,1,0},
       {0,0,0,0,0,0,0,1,1,2,2,1,0},
       {0,0,0,0,0,0,0,0,1,1,1,1,0},
       {0,0,0,0,0,0,0,0,0,1,2,2,1},

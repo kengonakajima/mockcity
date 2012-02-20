@@ -38,7 +38,6 @@ end
 
 function processButtonShortcutKey(keycode,down)
   for i,v in ipairs(buttons) do
-    print( "kkkk:", v.keyCode , keycode )
     if v.keyCode == keycode then
       v.callback(down)
       return true
@@ -48,16 +47,14 @@ function processButtonShortcutKey(keycode,down)
 end
 
 function selectButton(btn)
+  local origSelected = btn.selected
   for i,v in ipairs(buttons) do
-    if v == btn and v.selected then
       v.selected = false
-      updateButtonBGs()
-      return
-    end    
   end
   for i,v in ipairs(buttons) do
     if v == btn then
-      v.selected = true
+      v.selected = not origSelected
+      break
     end
   end
   updateButtonBGs()
