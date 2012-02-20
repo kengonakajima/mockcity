@@ -4,6 +4,7 @@ function Field(w,h)
     width = w,
     height = h,
     heights = {},
+    mockHeights = {},
     types = {} -- vertex has cell type.
   }
 
@@ -11,11 +12,16 @@ function Field(w,h)
   for z=1,h do
     for x=1,w do
       f.heights[cnt] = 0
+      f.mockHeights[cnt] = 0
       f.types[cnt] = CELLTYPE.GRASS
       cnt = cnt + 1
     end
   end
 
+  function f:setMockHeight(x,z,h)
+    local i = self.width * z + x + 1
+    self.mockHeights[i] = h
+  end  
   function f:setHeight(x,z,h)
     local i = self.width * z + x + 1
     self.heights[i] = h
@@ -24,10 +30,10 @@ function Field(w,h)
     local i = self.width * z + x + 1
     self.types[i] = t
   end
-  -- return height, type
+  -- return height, type, mockheight
   function f:get(x,z)
     local i = self.width * z + x + 1
-    return self.heights[i] or 0, self.types[i] or CELLTYPE.GRASS
+    return self.heights[i] or 0, self.types[i] or CELLTYPE.GRASS, self.mockHeights[i]
   end
   -- return 4 verts from LT
   function f:get4heights(x,z)
@@ -38,23 +44,47 @@ function Field(w,h)
     return { leftTop=ah, rightTop=bh, rightBottom=ch, leftBottom=dh }    
   end  
   
-  -- return heights, types
+  -- return heights, types, reddata
   function f:getRect( basex, basez, w,h )
-    local outh, outt = {}, {}
+    local outh, outt, outmh,outred = {}, {}, {}, {}
+    local validMockNum = 0
     local outi = 1
     for z=basez,basez+h-1 do
       for x=basex,basex+w-1 do
         local i = self.width * z + x + 1
-        local height, t = self.heights[i], self.types[i]
+        local height, t, mockh = self.heights[i], self.types[i], self.mockHeights[i]
         if not height then height = 0 end
+        if not mockh then mockh = 0 end
         if not t then t = CELLTYPE.GRASS end
         outh[outi] = height
         outt[outi] = t
+        outmh[outi] = mockh
+        if mockh < height then
+          validMockNum = validMockNum + 1
+          print("negative mockh:",x,z)
+          outred[outi] = true
+          if (outi-1)>=1 then outred[outi - 1] = true end
+          if (outi-self.width) >= 1 then
+            outred[outi - self.width] = true
+          end
+        elseif mockh > height then
+          validMockNum = validMockNum + 1
+        else
+          outred[outi] = false
+        end
+        
+        
         outi = outi + 1
       end
     end
---    print("getRect:", basex, basez, w,h, "outnum:", #outh, #outt )
-    return outh, outt
+
+    if validMockNum == 0 then
+      outmh = nil
+    else
+      print("gerrect: num mh:", #outmh, basex, basez )
+      assert( #outmh == w * h)
+    end    
+    return outh, outt, outmh, outred
   end
 
   -- land up for 1
@@ -115,6 +145,12 @@ function Field(w,h)
     end
     return nil
   end
+
+  function f:copyHeightToMock()
+    for i,v in ipairs(self.heights) do
+      self.mockHeights[i] = v
+    end    
+  end
   
   function f:generate()
     local cnt = 1
@@ -142,7 +178,8 @@ function Field(w,h)
     for i=1,10 do
       self:landup(20,20)
     end
-    
+
+
       
     -- fixed map for debug
     local htbl = {
@@ -158,14 +195,34 @@ function Field(w,h)
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},      
     }
+    local mocktbl = {
+      {0,0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0,0},      
+      {0,0,0,1,1,0,0,0,0,0,0,0,0},
+      {0,0,0,1,1,0,0,0,1,1,1,1,0},
+      {0,0,0,0,0,0,0,1,1,2,2,1,0},
+      {0,0,0,1,0,0,0,1,1,2,2,1,0},
+      {0,0,0,0,0,0,0,1,1,2,2,1,0},
+      {0,0,0,-1,-1,0,0,0,1,1,1,1,0},
+      {0,0,-1,-2,-2,-1,0,0,0,0,0,0,0},
+      {0,0,0,-1,-1,-1,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0,0},      
+    }
     for i,row in ipairs(htbl) do
       for j,col in ipairs(row) do
         self:setHeight( j-1,i-1, col )
-      end      
+      end
     end
+    self:copyHeightToMock()
+    for i,row in ipairs(mocktbl) do
+      for j,col in ipairs(row) do
+        self:setMockHeight( j-1,i-1, col )
+      end
+    end    
       
   end
 
-  print("initField:", #f.heights )
+  print("gen:", #f.heights )
   return f
 end

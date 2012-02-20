@@ -18,6 +18,7 @@ SCRW, SCRH = 960, 640
 MOAISim.openWindow ( "test", SCRW, SCRH )
 MOAIGfxDevice.setClearDepth ( true )
 
+
 viewport = MOAIViewport.new ()
 viewport:setSize ( SCRW, SCRH )
 viewport:setScale ( SCRW, SCRH )
@@ -47,17 +48,52 @@ fld:generate()
 
 CHUNKSZ = 16
 CELLUNITSZ = 32
+
+MOCKEPSILON = 2
 -- vx,vy : starts from zero, grid coord.
 function makeHMProp(vx,vz)
   local p = MOAIProp.new()
   function p:updateHeightMap(vertx,vertz,lightRate)
     if not lightRate then lightRate = 1 end
-    local hdata, tdata = fld:getRect( vertx, vertz, CHUNKSZ+1, CHUNKSZ+1 )
-    local hm = makeHeightMapMesh(CELLUNITSZ, CHUNKSZ+1,CHUNKSZ+1, lightRate, hdata,tdata )    
+    local hdata, tdata, mockdata, reddata = fld:getRect( vertx, vertz, CHUNKSZ+1, CHUNKSZ+1 )
+--    local reddata = {}
+--    for i,v in ipairs(hdata) do reddata[i] = false end      
+    -- show where to digg
+--    if mockdata then
+--      for i,v in ipairs(mockdata) do
+--        if v < hdata[i] then
+--          reddata[i] = true
+--        end        
+--      end
+--    end
+
+    local hm = makeHeightMapMesh(CELLUNITSZ, CHUNKSZ+1,CHUNKSZ+1, lightRate, hdata,tdata, reddata, false )    
     self:setDeck(hm)
+    if mockdata then
+      if not self.mockp then
+        self.mockp = MOAIProp.new()
+        -- show high places        
+        local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, mockdata, tdata, nil, true )
+        self.mockp:setDeck(mockmesh )
+        self.mockp:setColor(1,1,1,1)
+        self.mockp:setCullMode( MOAIProp.CULL_BACK )
+        self.mockp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
+        self.mockp:setLoc( vertx * CELLUNITSZ, 0 - MOCKEPSILON, vertz * CELLUNITSZ )        
+        fieldLayer:insertProp(self.mockp)
+
+        print("init mockprop. ",vertx, vertz )
+      end
+    end    
   end
   function p:updateLightRate(lightRate)
     self:updateHeightMap( self.vx, self.vz, lightRate )
+  end
+  local origsetloc = p.setLoc
+  function p:setLoc(x,y,z)
+    if self.mockp then
+      self.mockp:setLoc(x,y - MOCKEPSILON,z)
+    end    
+    origsetloc(self,x,y,z)
   end
 
   p.vx, p.vz = vx,vz
@@ -110,6 +146,8 @@ function initButtons()
           chk.darkMode = false
         end
       end
+    else
+      setDarkAroundCursor(lastControlX,lastControlZ)
     end
   end
 end
@@ -220,7 +258,15 @@ function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
   end
 end
 
-
+function setDarkAroundCursor(ctlx,ctlz)
+  local chx,chz =int(ctlx/CHUNKSZ), int(ctlz/CHUNKSZ)
+  local chk = findChunkByCoord( chx-1,chz-1,chx+1,chz+1, function(chunk)
+      if not chunk.darkMode then
+        chunk:updateLightRate(DARKMODELIGHTRATE)
+        chunk.darkMode = true
+      end
+    end)
+end
 
 ---------------------------
 
@@ -339,13 +385,7 @@ th:run(function()
         cursorProp:setAtGrid(ctlx,ctlz)
 
         if guiSelectedButton then
-          local chx,chz =int(ctlx/CHUNKSZ), int(ctlz/CHUNKSZ)
-          local chk = findChunkByCoord( chx-1,chz-1,chx+1,chz+1, function(chunk)
-              if not chunk.darkMode then
-                chunk:updateLightRate(DARKMODELIGHTRATE)
-                chunk.darkMode = true
-              end
-            end)
+          setDarkAroundCursor(ctlx,ctlz)
         end
         
       else
