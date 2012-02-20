@@ -45,8 +45,15 @@ function normalize(x,y,l)
 end
 
 function int(x)
-  if not x then return 0 else return math.floor(x) end
-  return math.floor(x)
+  if not x then
+    return 0
+  else
+    if type(x) == "boolean" then
+      return 1
+    else
+      return math.floor(x)
+    end
+  end  
 end
 function int2(x,y)
   return int(x), int(y)
@@ -285,5 +292,24 @@ function loadGfxQuad( path )
   gq:setRect( -64,-64,64,64 )
   gq:setUVRect( 0,1,1,0)
   return gq    
+end
+
+
+function loadTileDeck2( path, w, h, sz, fullxsz, fullysz, fil, wrp )
+   local t = MOAITexture.new()
+   t:load(path)
+   if fil then t:setFilter(fil) end
+   if wrp then t:setWrap(wrp) end
+   local d = MOAITileDeck2D.new()
+   d:setTexture(t)
+--   d:setSize(w,h,1/w,1/h,0,0,1/w,1/h)
+   local xr,yr = sz/fullxsz, sz/fullysz
+   d:setSize(w,h,  xr,yr, 0,0, xr,yr )
+   d:setRect( -0.5, -0.5, 0.5, 0.5 )
+   return d
+end
+
+function rectIncludes(r,x,y)
+  return ( x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2 )
 end
 
