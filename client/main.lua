@@ -223,7 +223,7 @@ th:run(function()
       frameCnt = frameCnt + 1
       if lastPrintAt < t - 1 then
         lastPrintAt = t
-        statBox:setString( string.format( "fps:%d", frameCnt ) )
+        statBox:setString( string.format( "fps:%d x:%d z:%d", frameCnt , lastControlX or 0, lastControlZ or 0 ) )
         frameCnt = 0
       end
 
@@ -278,6 +278,7 @@ th:run(function()
 
       local ctlx,ctlz = fld:findControlPoint( camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
       if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
+        lastControlX, lastControlZ = ctlx, ctlz
         cursorProp:setAtGrid(ctlx,ctlz)
       else
         cursorProp:setLoc(0,-999999,0) -- disappear
