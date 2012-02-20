@@ -127,14 +127,16 @@ function initButtons()
   local baseX, baseY = -SCRW/2 + 50, SCRH/2 - 100
   local x,y = baseX, baseY
   y = y - BUTTONSIZE
-  upButton = makeButton( "up", x,y, guiDeck, 4, 50, function(down)
-      selectButton(upButton)
-      print("up")
+  upButton = makeButton( "up", x,y, guiDeck, 4, 49, function(down)
+      if down then
+        selectButton(upButton)
+      end      
     end)
   y = y - BUTTONSIZE
-  downButton = makeButton( "down", x,y, guiDeck, 5, 51, function(down)
-      selectButton(downButton)
-      print("down")
+  downButton = makeButton( "down", x,y, guiDeck, 5, 50, function(down)
+      if down then
+        selectButton(downButton)
+      end
     end)
 
   guiSelectModeCallback = function(b)

@@ -38,6 +38,7 @@ end
 
 function processButtonShortcutKey(keycode,down)
   for i,v in ipairs(buttons) do
+    print( "kkkk:", v.keyCode , keycode )
     if v.keyCode == keycode then
       v.callback(down)
       return true
