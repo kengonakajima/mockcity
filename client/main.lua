@@ -195,7 +195,7 @@ function onMouseLeftEvent(down)
   if cury < 0 then return end
   
   local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
-  print( "landup:", x,z )
+  print( "landUp:", x,z )
 
   function updateCallback(x,z)
     local chx, chz = int( x / CHUNKSZ ), int( z / CHUNKSZ )
@@ -207,7 +207,9 @@ function onMouseLeftEvent(down)
   end
 
   if guiSelectedButton == upButton then
-    fld:landup( x,z, updateCallback  )
+    fld:landMod( x,z,1, updateCallback )
+  elseif guiSelectedButton == downButton then
+    fld:landMod( x,z,-1, updateCallback )
   end
 
   -- check updated chunks
@@ -313,7 +315,7 @@ end
 
 moveWorld(-20*CELLUNITSZ, -20*CELLUNITSZ)
 
-camera.flyUp = true
+camera.flyUp = false
 
 
 th = MOAICoroutine.new()

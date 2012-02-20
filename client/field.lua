@@ -88,22 +88,25 @@ function Field(w,h)
   end
 
   -- land up for 1
-  function f:landup(x,z,callback)
+  function f:landMod(x,z,mod,callback)
+    assert( mod == 1 or mod == -1 )
     local h = self:get(x,z)
-    self:setHeight(x,z,h+1)
+    self:setHeight(x,z,h+mod)
     if callback then callback(x,z) end
-    self:checkSlopeUp(x,z,h+1,callback)
+    self:checkSlopeMod(x,z,h,mod,callback)
   end
+
   -- recurse. maximum slope rate is 1 per cell.
   f.dxdzTable = { {-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
-  function f:checkSlopeUp(x,z,newh,callback)
+  function f:checkSlopeMod(x,z,curh,mod,callback)
+    local newh = curh + mod
     for i,dxdz in ipairs(self.dxdzTable) do
       local dx,dz = dxdz[1], dxdz[2]
       local h,t = self:get(x+dx,z+dz)
-      if h < newh-1 then
-        self:setHeight(x+dx,z+dz,h+1)
+      if (mod == 1 and h < newh-1 ) or (mod == -1 and h > newh+1 ) then
+        self:setHeight(x+dx,z+dz,h+mod)
         if callback then callback(x+dx,z+dz) end
-        self:checkSlopeUp(x+dx,z+dz,h+1,callback)
+        self:checkSlopeMod(x+dx,z+dz,h,mod,callback)
       end
     end
   end
@@ -167,7 +170,7 @@ function Field(w,h)
         if math.random() > 0.99 then
           local upN = range(2,5)
           for i=1,upN do
-            self:landup(x,z)
+            self:landMod(x,z,1)
           end
         end
         
@@ -176,7 +179,7 @@ function Field(w,h)
     end
 
     for i=1,10 do
-      self:landup(20,20)
+      self:landMod(20,20,1)
     end
 
 
@@ -204,10 +207,10 @@ function Field(w,h)
       {0,0,0,0,0,0,0,1,1,2,2,1,0},
       {0,0,0,1,0,0,0,1,1,2,2,1,0},
       {0,0,0,0,0,0,0,1,1,2,2,1,0},
-      {0,0,0,-1,-1,0,0,0,1,1,1,1,0},
-      {0,0,-1,-2,-2,-1,0,0,0,0,0,0,0},
-      {0,0,0,-1,-1,-1,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0,0,0,0,0,0},      
+      {0,0,0,0,0,0,0,0,1,1,1,1,0},
+      {0,0,0,0,0,0,0,0,0,1,2,2,1},
+      {0,0,0,0,0,0,0,0,0,1,2,2,1},
+      {0,0,0,0,0,0,0,0,0,1,2,2,1},      
     }
     for i,row in ipairs(htbl) do
       for j,col in ipairs(row) do
