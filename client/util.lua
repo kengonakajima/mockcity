@@ -21,7 +21,7 @@ function birandom()
   end
 end
 
--- 近い方の値を返す
+
 function nearer(from,a,b)
   local da = math.abs(a-from)
   local db = math.abs(b-from)
@@ -215,11 +215,11 @@ function scanRect(x0,y0,x1,y1,fn)
   end
 end
 
---差
+-- vec diff 
 function vec3sub(va,vb)
   return { x = vb.x-va.x, y = vb.y-va.y, z = vb.z-va.z }
 end
---out:vec
+
 function vec3cross(v1,v2)
   local x1,y1,z1 = v1.x, v1.y, v1.z
   local x2,y2,z2 = v2.x, v2.y, v2.z
@@ -245,7 +245,7 @@ function vec3toString(v)
   return string.format("(%f,%f,%f)", v.x, v.y, v.z )
 end
 
--- t,u,v をかえす
+-- t, u,v 
 function triangleIntersect( orig, dir, v0,v1,v2 )
   local e1 = vec3sub(v1,v0)
   local e2 = vec3sub(v2,v0)
@@ -291,3 +291,4 @@ function loadGfxQuad( path )
   gq:setUVRect( 0,1,1,0)
   return gq    
 end
+

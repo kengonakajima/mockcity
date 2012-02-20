@@ -1,10 +1,10 @@
--- セルの数はw-1
+-- w,h:  vertex, not cells
 function Field(w,h)
   local f = {
     width = w,
     height = h,
     heights = {},
-    types = {} -- heightの頂点（左上）の属性としてもつ
+    types = {} -- vertex has cell type.
   }
 
   local cnt = 1
@@ -24,12 +24,12 @@ function Field(w,h)
     local i = self.width * z + x + 1
     self.types[i] = t
   end
-  --h,tをかえす
+  -- return height, type
   function f:get(x,z)
     local i = self.width * z + x + 1
     return self.heights[i] or 0, self.types[i] or CELLTYPE.GRASS
   end
-  -- 左上座標を指定したら4点を返す
+  -- return 4 verts from LT
   function f:get4heights(x,z)
     local ah = self:get(x,z)
     local bh = self:get(x+1,z)
@@ -38,7 +38,7 @@ function Field(w,h)
     return { leftTop=ah, rightTop=bh, rightBottom=ch, leftBottom=dh }    
   end  
   
-  -- heights, typesをかえす
+  -- return heights, types
   function f:getRect( basex, basez, w,h )
     local outh, outt = {}, {}
     local outi = 1
@@ -57,14 +57,14 @@ function Field(w,h)
     return outh, outt
   end
 
-  -- ある地点を1個盛り上げる
+  -- land up for 1
   function f:landup(x,z,callback)
     local h = self:get(x,z)
     self:setHeight(x,z,h+1)
     if callback then callback(x,z) end
     self:checkSlopeUp(x,z,h+1,callback)
   end
-  -- 斜面の傾きが2以上だったらもりあげる
+  -- recurse. maximum slope rate is 1 per cell.
   f.dxdzTable = { {-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
   function f:checkSlopeUp(x,z,newh,callback)
     for i,dxdz in ipairs(self.dxdzTable) do
@@ -78,14 +78,14 @@ function Field(w,h)
     end
   end
 
-  -- tで塗る
+  -- t: fill type
   function f:fillCircle(cx,cz,dia,t)
     scanCircle( cx,cz, dia,1, function(x,z)
         self:setType(x,z,t)
       end)
   end
 
-  -- dirはnormalized
+  -- dir : must be normalized
   function f:findControlPoint( camx,camy,camz, dirx,diry,dirz )
     local x,y,z = camx,camy,camz
     local camvec, dirvec = vec3(camx,camy,camz), vec3(dirx,diry,dirz)
@@ -144,16 +144,16 @@ function Field(w,h)
     end
     
       
-    -- 固定のマップを書き込む(デバッグ用)
+    -- fixed map for debug
     local htbl = {
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,1,1,0,0,0,0,0,0,0,0,0},
-      {0,0,1,1,0,0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,1,1,1,0,0,0,0,0},
-      {0,0,1,0,0,1,2,1,0,0,0,0,0},
-      {0,0,0,0,0,1,1,1,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,1,1,0,0,0,1,1,1,1,0,0},
+      {0,0,0,0,0,1,1,1,0,0,1,0,0},
+      {0,0,1,0,0,1,2,1,0,0,1,0,0},
+      {0,0,0,0,0,1,1,1,0,0,1,0,0},
+      {0,0,0,0,0,0,0,1,1,1,1,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0},      

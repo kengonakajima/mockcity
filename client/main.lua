@@ -7,7 +7,9 @@
 require "./util"
 require "./mesh"
 require "./field"
+require "./textbox"
 
+math.randomseed(1)
 
 SCRW, SCRH = 960, 640
 
@@ -23,9 +25,13 @@ fieldLayer:setViewport(viewport)
 fieldLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
 MOAISim.pushRenderPass(fieldLayer)
 
+hudLayer = MOAILayer2D.new()
+hudLayer:setViewport(viewport)
+MOAISim.pushRenderPass(hudLayer)
+
+hudLayer:setColor(1,1,1,1)
 
 
-whiteDeck = loadTex( "white.png" )
 baseDeck = loadTex( "./images/citybase.png" )
 cursorDeck = loadGfxQuad( "./images/cursor.png" )
 
@@ -44,7 +50,7 @@ fld:generate()
 
 CHUNKSZ = 16
 CELLUNITSZ = 32
--- vx,vy : 頂点の位置。 0開始。
+-- vx,vy : starts from zero, grid coord.
 function makeHMProp(vx,vz)
   local sz = CELLUNITSZ
   local w,h = CHUNKSZ+1,CHUNKSZ+1
@@ -150,6 +156,7 @@ MOAIInputMgr.device.mouseLeft:setCallback( onMouseLeftEvent )
 
 function updateChunk(chx,chz)
   local p = makeHMProp(chx*CHUNKSZ,chz*CHUNKSZ)
+
   fieldLayer:insertProp(p)
   p.chx, p.chz = chx, chz
   table.insert(chunks,p)
@@ -190,6 +197,9 @@ cursorProp:setLoc(0,CELLUNITSZ/2,0)
 fieldLayer:insertProp(cursorProp)
 
 
+----------------
+statBox = makeTextBox( 0,0, "init")
+hudLayer:insertProp(statBox)
 
 ----------------
 scrollX, scrollZ = 0, 0
@@ -209,7 +219,7 @@ th:run(function()
     local xrot = 0
     while true do
       local cx,cy,cz = camera:getLoc()
-      local dy,dz = 0 - cy, 0 - cz -- いつも中央点を見て、世界のほうを動かす。
+      local dy,dz = 0 - cy, 0 - cz -- move world. not camera, because of Moai's bug?
       camera:setRot( 180 - angle(dz,dy), 0, 0 )
 
       local camSpeed = cy / 50

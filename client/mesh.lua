@@ -13,10 +13,10 @@ function makeVertexBuffer(nVert)
   vb:setFormat(vf)
   vb:reserveVerts( nVert )
 
-  function vb:pushVert(x,y,z, u,v)
+  function vb:pushVert(x,y,z, u,v, r,g,b)
     self:writeFloat( x,y,z )
     self:writeFloat( u,v )
-    self:writeColor32( 1,1,1 )        
+    self:writeColor32( r,g,b )
   end
       
   return vb
@@ -103,27 +103,77 @@ function makeHeightMapMesh(sz,w,h,hdata, tdata )
       if rightBottomHeight < leftBottomHeight and rightBottomHeight == rightTopHeight and rightTopHeight == leftTopHeight and leftTopHeight < leftBottomHeight then
         normalDiv = false
       end
+      if leftBottomHeight < rightTopHeight and leftBottomHeight < leftTopHeight and leftBottomHeight < rightBottomHeight then
+        normalDiv = false
+      end
+      if rightTopHeight < rightBottomHeight and rightTopHeight < leftTopHeight and rightTopHeight < leftBottomHeight then
+        normalDiv = false
+      end
+      
 
       local baseU, baseV = tileIndexToUV( tdata[fieldVertInd] )
       local baseVertOffset = (cellCnt-1) * 6
+
       
       if normalDiv then
-        -- 頂点(別々にUVで影をつけるので三角2個で6頂点必要        
-        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV ) -- A
-        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV ) -- B
-        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP )  -- C
+        -- 頂点(別々にUVで影をつけるので三角2個で6頂点必要
+        local lg = 0.8
+        if leftTopHeight<rightTopHeight or leftTopHeight < rightBottomHeight then
+          lg = 1
+        elseif leftTopHeight >rightTopHeight or leftTopHeight > rightBottomHeight then
+          lg = 0.5
+        end
         
-        vb:pushVert( basex, leftTopHeight, basez,  baseU, baseV )-- A
-        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP ) -- C
-        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP ) -- D
-      else
-        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV ) --A
-        vb:pushVert( basex+sz, rightTopHeight, basez, baseU + DECKSTEP, baseV ) --B
-        vb:pushVert( basex, leftBottomHeight, basez+sz, baseU, baseV + DECKSTEP ) --D
+        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, lg,lg,lg ) -- A
+        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV, lg,lg,lg ) -- B
+        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP, lg,lg,lg )  -- C
 
-        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV ) -- B
-        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP ) -- C
-        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP ) -- D
+        if leftTopHeight<rightBottomHeight or leftTopHeight < leftBottomHeight then
+          lg = 1
+        elseif leftTopHeight>rightBottomHeight or leftTopHeight > leftBottomHeight then
+          lg = 0.5
+        else
+          lg = 0.8
+        end        
+        vb:pushVert( basex, leftTopHeight, basez,  baseU, baseV, lg,lg,lg )-- A
+        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP, lg,lg,lg ) -- C
+        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP, lg,lg,lg ) -- D
+      else
+        if rightTopHeight > leftBottomHeight then
+          if leftTopHeight > leftBottomHeight then
+            lg = 0.5
+          else
+            lg = 1
+          end          
+        elseif rightTopHeight < leftBottomHeight then
+          if leftTopHeight < leftBottomHeight then
+            lg = 1
+          else
+            lg = 0.5
+          end          
+        end
+        
+        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, lg,lg,lg ) --A
+        vb:pushVert( basex+sz, rightTopHeight, basez, baseU + DECKSTEP, baseV, lg,lg,lg ) --B
+        vb:pushVert( basex, leftBottomHeight, basez+sz, baseU, baseV + DECKSTEP, lg,lg,lg ) --D
+
+        if rightTopHeight > leftBottomHeight then
+          if rightBottomHeight > leftBottomHeight then
+            lg = 1
+          else
+            lg = 0.5
+          end          
+        elseif rightTopHeight < leftBottomHeight then
+          if rightBottomHeight < leftBottomHeight then
+            lg = 0.5
+          else
+            lg = 1
+          end          
+        end
+
+        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV, lg,lg,lg ) -- B
+        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP, lg,lg,lg ) -- C
+        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP, lg,lg,lg ) -- D
       end
       
       -- 左側の三角形
