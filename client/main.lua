@@ -29,7 +29,6 @@ hudLayer = MOAILayer2D.new()
 hudLayer:setViewport(viewport)
 MOAISim.pushRenderPass(hudLayer)
 
-hudLayer:setColor(1,1,1,1)
 
 
 baseDeck = loadTex( "./images/citybase.png" )
@@ -132,9 +131,9 @@ function onMouseLeftEvent(down)
       table.insert(toReallocate, {chx=chunk.chx,chz=chunk.chz,prio=chunk:getPriority(), posx = posx, posy=posy, posz=posz} )
     end
   end
-  print("AAAAAAAA:", #chunks )
+
   for i,chunk in ipairs(toRemove) do
-    print("chunk",  chunk.chx, chunk.chz, "to update.")
+    print("update chunk",  chunk.chx, chunk.chz, "to update.")
     fieldLayer:removeProp(chunk)
     for j,ch in ipairs(chunks) do
       if ch == chunk then
@@ -143,7 +142,7 @@ function onMouseLeftEvent(down)
       end
     end    
   end
-  print("BBBBBBBB:", #chunks )  
+
   for i,v in ipairs(toReallocate) do
     local p = updateChunk( v.chx, v.chz )
     p:setPriority( v.prio )
@@ -198,7 +197,7 @@ fieldLayer:insertProp(cursorProp)
 
 
 ----------------
-statBox = makeTextBox( 0,0, "init")
+statBox = makeTextBox( -SCRW/2,SCRH/2, "init")
 hudLayer:insertProp(statBox)
 
 ----------------
@@ -216,8 +215,19 @@ camera.flyUp = true
 
 th = MOAICoroutine.new()
 th:run(function()
-    local xrot = 0
+    local xrot,frameCnt = 0,0
+    local lastPrintAt = 0
     while true do
+      local t = now()
+      -- game status
+      frameCnt = frameCnt + 1
+      if lastPrintAt < t - 1 then
+        lastPrintAt = t
+        statBox:setString( string.format( "fps:%d", frameCnt ) )
+        frameCnt = 0
+      end
+
+      -- cams and moves      
       local cx,cy,cz = camera:getLoc()
       local dy,dz = 0 - cy, 0 - cz -- move world. not camera, because of Moai's bug?
       camera:setRot( 180 - angle(dz,dy), 0, 0 )
@@ -262,13 +272,12 @@ th:run(function()
 
       -- update cursor
       local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
-      print("pointer:", px,py,pz, xn,yn,zn )
+--      print("pointer:", px,py,pz, xn,yn,zn )
 
       local camx,camy,camz = camera:getLoc()
 
       local ctlx,ctlz = fld:findControlPoint( camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
       if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
-        print("controlpoint:", ctlx, ctlz )
         cursorProp:setAtGrid(ctlx,ctlz)
       else
         cursorProp:setLoc(0,-999999,0) -- disappear

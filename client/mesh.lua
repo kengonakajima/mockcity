@@ -117,7 +117,7 @@ function makeHeightMapMesh(sz,w,h,hdata, tdata )
       
       if normalDiv then
         -- 頂点(別々にUVで影をつけるので三角2個で6頂点必要
-        local lg = 0.8
+        local lg = 0.7
         if leftTopHeight<rightTopHeight or leftTopHeight < rightBottomHeight then
           lg = 1
         elseif leftTopHeight >rightTopHeight or leftTopHeight > rightBottomHeight then
@@ -133,7 +133,7 @@ function makeHeightMapMesh(sz,w,h,hdata, tdata )
         elseif leftTopHeight>rightBottomHeight or leftTopHeight > leftBottomHeight then
           lg = 0.5
         else
-          lg = 0.8
+          lg = 0.7
         end        
         vb:pushVert( basex, leftTopHeight, basez,  baseU, baseV, lg,lg,lg )-- A
         vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP, lg,lg,lg ) -- C

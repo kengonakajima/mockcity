@@ -101,12 +101,12 @@ function Field(w,h)
         local ltX,ltZ = ix*CELLUNITSZ, iz*CELLUNITSZ
         local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rtY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ))
         if t then
-          print("HIT TRIANGLE RIGHT-UP. x,z:", ix,iz)
+--          print("HIT TRIANGLE RIGHT-UP. x,z:", ix,iz)
           return ix,iz
         end
         t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ), vec3(ltX,lbY,ltZ+CELLUNITSZ))
         if t then
-          print("HIT TRIANGLE LEFT-DOWN. x,z:",ix,iz)
+--          print("HIT TRIANGLE LEFT-DOWN. x,z:",ix,iz)
           return ix,iz
         end
       end      

@@ -4,14 +4,9 @@ function b2i(b)
   if b then return 1 else return 0 end
 end
 
-currentElapsedTime = 0
 function now()
-  return currentElapsedTime
+  return MOAISim.getDeviceTime()
 end
-function addCurrentElapsedTime(dt)
-  currentElapsedTime = currentElapsedTime + dt
-end
-
 
 function birandom()
   if math.random() < 0.5 then
