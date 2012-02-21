@@ -39,12 +39,14 @@ baseDeck = loadTex( "./images/citybase.png" )
 cursorDeck = loadGfxQuad( "./images/cursor.png" )
 
 
-DARKMODELIGHTRATE = 0.6
 
 
 
-fld = Field(256,256)
-fld:generate()
+xpcall(function()
+    fld = Field(256,256)
+    fld:generate()
+    print("generated")
+  end, errorHandler)
 
 CHUNKSZ = 16
 CELLUNITSZ = 32
@@ -53,40 +55,51 @@ MOCKEPSILON = 2
 -- vx,vy : starts from zero, grid coord.
 function makeHMProp(vx,vz)
   local p = MOAIProp.new()
-  function p:updateHeightMap(vertx,vertz,lightRate)
-    if not lightRate then lightRate = 1 end
+  function p:updateHeightMap(vertx,vertz,editmode)
+    print("updateHeightMap: editmode:", vertx, vertz, editmode )
+    local lightRate = 1
+    if editmode then lightRate = 0.5 end
     local hdata, tdata, mockdata, reddata = fld:getRect( vertx, vertz, CHUNKSZ+1, CHUNKSZ+1 )
---    local reddata = {}
---    for i,v in ipairs(hdata) do reddata[i] = false end      
-    -- show where to digg
---    if mockdata then
---      for i,v in ipairs(mockdata) do
---        if v < hdata[i] then
---          reddata[i] = true
---        end        
---      end
---    end
-
-    local hm = makeHeightMapMesh(CELLUNITSZ, CHUNKSZ+1,CHUNKSZ+1, lightRate, hdata,tdata, reddata, false )    
+    local showhdata ={}
+    if editmode and mockdata then
+      print("ddddddd:", #hdata, #mockdata )
+      showhdata = dupArray(mockdata)
+      reddata = nil
+    else
+      showhdata = dupArray(hdata)
+    end
+    
+    local hm = makeHeightMapMesh(CELLUNITSZ, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata,tdata, reddata, false )    
     self:setDeck(hm)
-    if mockdata then
-      if not self.mockp then
+    
+    if not editmode and mockdata then
+      print("TTTTTTTTTTTTTTTT")
+      if not self.mockp then 
         self.mockp = MOAIProp.new()
-        -- show high places        
-        local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, mockdata, tdata, nil, true )
-        self.mockp:setDeck(mockmesh )
-        self.mockp:setColor(1,1,1,1)
-        self.mockp:setCullMode( MOAIProp.CULL_BACK )
-        self.mockp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
-        self.mockp:setLoc( vertx * CELLUNITSZ, 0 - MOCKEPSILON, vertz * CELLUNITSZ )        
         fieldLayer:insertProp(self.mockp)
-
-        print("init mockprop. ",vertx, vertz )
+        self.mockp:setLoc( vertx * CELLUNITSZ, 0 - MOCKEPSILON, vertz * CELLUNITSZ )        
       end
+      
+      -- show high places
+      for i,v in ipairs(mockdata) do
+        if v ~= showhdata[i] then print("diff:",i,mockdata[i] ) end
+      end
+      
+      local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, mockdata, tdata, nil, true )
+      self.mockp:setDeck(mockmesh )
+      self.mockp:setColor(1,1,1,1)
+      self.mockp:setCullMode( MOAIProp.CULL_BACK )
+      self.mockp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
+
+      print("init mockprop. ",vertx, vertz )
+    else
+      if self.mockp then self.mockp:setDeck(nil) end
     end    
   end
-  function p:updateLightRate(lightRate)
-    self:updateHeightMap( self.vx, self.vz, lightRate )
+  
+  function p:toggleEditMode(mode)    
+    self:updateHeightMap( self.vx, self.vz, mode )
+    self.editMode = mode
   end
   local origsetloc = p.setLoc
   function p:setLoc(x,y,z)
@@ -97,7 +110,7 @@ function makeHMProp(vx,vz)
   end
 
   p.vx, p.vz = vx,vz
-  p:updateHeightMap(vx,vz,1.0)
+  p:updateHeightMap(vx,vz,false)
   p:setCullMode( MOAIProp.CULL_BACK )
   p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
   local x,z = vx * CELLUNITSZ,  vz * CELLUNITSZ 
@@ -112,9 +125,11 @@ function makeCursor()
   p:setRot(-45,0,0)
 --  p:setCullMode( MOAIProp.CULL_BACK)
 --  p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
-  function p:setAtGrid(x,z)
+  function p:setAtGrid(editmode, x,z)
     local xx,zz = x * CELLUNITSZ, z * CELLUNITSZ
-    local h,t = fld:get( x,z )
+    local tgt = fld.heights
+    if editmode then tgt = fld.mockHeights end
+    local h = fld:targetGet( tgt, x,z )
     local yy = h * CELLUNITSZ
     self:setLoc(xx + scrollX,yy + CELLUNITSZ/2 - 5, zz + scrollZ)
     self.lastGridX, self.lastGridZ = x,z
@@ -144,14 +159,13 @@ function initButtons()
     print( "guiSelectModeCallback changed to:", b )
     if b == nil then
       for i,chk in ipairs(chunks) do
-        if chk.darkMode then
-          chk:updateLightRate(1)
-          chk.darkMode = false
+        if chk.editMode then
+          chk:toggleEditMode(false)
         end
       end
     else
       if lastControlX then
-        setDarkAroundCursor(lastControlX,lastControlZ)
+        setEditModeAroundCursor(lastControlX,lastControlZ)
       end      
     end
   end
@@ -200,7 +214,6 @@ function onMouseLeftEvent(down)
   if cury < 0 then return end
   
   local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
-  print( "landUp:", x,z )
 
   function updateCallback(x,z)
     local chx, chz = int( x / CHUNKSZ ), int( z / CHUNKSZ )
@@ -212,22 +225,20 @@ function onMouseLeftEvent(down)
   end
 
   if guiSelectedButton == upButton then
-    fld:landMod( x,z,1, updateCallback )
+    fld:mockMod( x,z,1, updateCallback )
   elseif guiSelectedButton == downButton then
-    fld:landMod( x,z,-1, updateCallback )
+    fld:mockMod( x,z,-1, updateCallback )
   end
 
   -- check updated chunks
   for i,chunk in ipairs(chunks) do
     if chunk.toUpdate then
-      chunk:updateHeightMap( chunk.chx * CHUNKSZ, chunk.chz * CHUNKSZ )
+      chunk:toggleEditMode(true)
       chunk.toUpdate = false
-      chunk:updateLightRate(DARKMODELIGHTRATE)
-      chunk.darkMode = true
     end
   end
 
-  cursorProp:setAtGrid( x,z )
+  cursorProp:setAtGrid( true, x,z )
 end
 
 MOAIInputMgr.device.mouseLeft:setCallback( onMouseLeftEvent )
@@ -265,12 +276,11 @@ function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
   end
 end
 
-function setDarkAroundCursor(ctlx,ctlz)
+function setEditModeAroundCursor(ctlx,ctlz)
   local chx,chz =int(ctlx/CHUNKSZ), int(ctlz/CHUNKSZ)
   local chk = findChunkByCoord( chx-1,chz-1,chx+1,chz+1, function(chunk)
-      if not chunk.darkMode then
-        chunk:updateLightRate(DARKMODELIGHTRATE)
-        chunk.darkMode = true
+      if not chunk.editMode then
+        chunk:toggleEditMode(true)
       end
     end)
 end
@@ -386,13 +396,14 @@ th:run(function()
 
       local camx,camy,camz = camera:getLoc()
 
-      local ctlx,ctlz = fld:findControlPoint( camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+      local editmode = guiSelectedButton
+      local ctlx,ctlz = fld:findControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
       if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
         lastControlX, lastControlZ = ctlx, ctlz
-        cursorProp:setAtGrid(ctlx,ctlz)
+        cursorProp:setAtGrid(editmode, ctlx,ctlz)
 
         if guiSelectedButton then
-          setDarkAroundCursor(ctlx,ctlz)
+          setEditModeAroundCursor(ctlx,ctlz)
         end
         
       else

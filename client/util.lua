@@ -313,3 +313,17 @@ function rectIncludes(r,x,y)
   return ( x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2 )
 end
 
+function dupArray(t)
+  local out={}
+  for i,v in ipairs(t) do
+    out[i] = v
+  end
+  return out  
+end
+
+
+function errorHandler(erro)
+  print( erro )
+  print( debug.traceback() )
+  os.exit()
+end

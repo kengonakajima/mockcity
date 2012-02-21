@@ -5,6 +5,7 @@ function Field(w,h)
     height = h,
     heights = {},
     mockHeights = {},
+    origHeights = {},
     types = {} -- vertex has cell type.
   }
 
@@ -26,6 +27,15 @@ function Field(w,h)
     local i = self.width * z + x + 1
     self.heights[i] = h
   end
+  function f:targetSet(target,x,z,h)
+    local i = self.width * z + x + 1
+    target[i] = h    
+  end
+  function f:targetGet(target,x,z)
+    local i = self.width * z + x + 1
+    return target[i]
+  end
+    
   function f:setType(x,z,t)
     local i = self.width * z + x + 1
     self.types[i] = t
@@ -36,11 +46,11 @@ function Field(w,h)
     return self.heights[i] or 0, self.types[i] or CELLTYPE.GRASS, self.mockHeights[i]
   end
   -- return 4 verts from LT
-  function f:get4heights(x,z)
-    local ah = self:get(x,z)
-    local bh = self:get(x+1,z)
-    local ch = self:get(x+1,z+1)
-    local dh = self:get(x,z+1)
+  function f:get4heights(tgt, x,z)    
+    local ah = self:targetGet(tgt, x,z) or 0
+    local bh = self:targetGet(tgt, x+1,z) or 0
+    local ch = self:targetGet(tgt, x+1,z+1) or 0
+    local dh = self:targetGet(tgt, x,z+1) or 0
     return { leftTop=ah, rightTop=bh, rightBottom=ch, leftBottom=dh }    
   end  
   
@@ -71,7 +81,6 @@ function Field(w,h)
           outred[outi] = false
         end
         
-        
         outi = outi + 1
       end
     end
@@ -85,31 +94,71 @@ function Field(w,h)
     return outh, outt, outmh, outred
   end
 
-  -- land up for 1
-  function f:landMod(x,z,mod,callback)
+  function f:targetMod(target,x,z,mod,callback)
     assert( mod == 1 or mod == -1 )
-    local h = self:get(x,z)
-    if h <= 0 and mod == -1 then return end
-    self:setHeight(x,z,h+mod)
-    if callback then callback(x,z) end
-    self:checkSlopeMod(x,z,h,mod,callback)
+    local h = self:targetGet(target,x,z)
+    if h then
+      if h <= 0 and mod == -1 then return end
+      self:targetSet(target,x,z,h+mod)
+      if callback then callback(x,z) end
+      self:checkSlopeMod(target,x,z,h,mod,callback)
+    end    
   end
+    
+  function f:landMod(x,z,mod,callback)
+    self:targetMod( self.heights, x,z,mod,callback)
+  end
+  function f:mockMod(x,z,mod,callback)
+    self:targetMod( self.mockHeights, x,z,mod,callback)
+  end
+    
+--  function f:mockMod(x,z,mod,callback)
+--    assert( mod == 1 or mod == -1 )
+--    local h = self:get(x,z)
+--    if h <= 0 and mod == -1 then return end
+--    self:setHeight(x,z,h+mod)
+--    if callback then callback(x,z) end
+--    self:checkSlopeMod(x,z,h,mod,callback)
+--  end
 
   -- recurse. maximum slope rate is 1 per cell.
   f.dxdzTable = { {-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
-  function f:checkSlopeMod(x,z,curh,mod,callback)
+  function f:checkSlopeMod(tgt, x,z,curh,mod,callback)
     local newh = curh + mod
     for i,dxdz in ipairs(self.dxdzTable) do
       local dx,dz = dxdz[1], dxdz[2]
-      local h,t = self:get(x+dx,z+dz)
-      if (mod == 1 and h < newh-1 ) or (mod == -1 and h > newh+1 ) then
-        self:setHeight(x+dx,z+dz,h+mod)
-        if callback then callback(x+dx,z+dz) end
-        self:checkSlopeMod(x+dx,z+dz,h,mod,callback)
-      end
+      local h,t = self:targetGet(tgt, x+dx,z+dz)
+      if h then
+        if (mod == 1 and h < newh-1 ) or (mod == -1 and h > newh+1 ) then
+          self:targetSet(tgt,x+dx,z+dz,h+mod)
+          if callback then callback(x+dx,z+dz) end
+          self:checkSlopeMod(tgt, x+dx,z+dz,h,mod,callback)
+        end
+      end      
     end
   end
 
+  function f:copyHeights(from,to, x1,z1,x2,z2)
+    for z=z1,z2 do
+      for x=x1,x2 do
+        local i = self.width * z + x + 1        
+        to[i] = from[i]
+      end
+    end    
+  end
+  function f:copyHeightsToOrigHeights(x1,z1,x2,z2)
+    self:copyHeights( self.heights, self.origHeights, x1,z1,x2,z2 )
+  end
+  function f:copyMockHeightsToHeights(x1,z1,x2,z2)
+    self:copyHeights( self.mockHeights, self.heights, x1,z1,x2,z2 )
+  end
+  function f:copyHeightsToMockHeights(x1,z1,x2,z2)
+    self:copyHeights( self.heights, self.mockHeights, x1,z1,x2,z2 )
+  end
+  function f:copyOrigHeightsToHeights(x1,z1,x2,z2)
+    self:copyHeights( self.origHeights, self.heights, x1,z1,x2,z2 )
+  end
+  
   -- t: fill type
   function f:fillCircle(cx,cz,dia,t)
     scanCircle( cx,cz, dia,1, function(x,z)
@@ -118,7 +167,9 @@ function Field(w,h)
   end
 
   -- dir : must be normalized
-  function f:findControlPoint( camx,camy,camz, dirx,diry,dirz )
+  function f:findControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
+    local tgt = self.heights
+    if editmode then tgt = self.mockHeights end
     local x,y,z = camx,camy,camz
     local camvec, dirvec = vec3(camx,camy,camz), vec3(dirx,diry,dirz)
     local loopN = camy / CELLUNITSZ
@@ -127,7 +178,7 @@ function Field(w,h)
       x,y,z = x + dirx * CELLUNITSZ, y + diry * CELLUNITSZ, z + dirz * CELLUNITSZ
       local ix, iz = int(x/CELLUNITSZ), int(z/CELLUNITSZ)
       if ix ~= previx or iz ~= previz then
-        local h4s = fld:get4heights(ix,iz)
+        local h4s = fld:get4heights(tgt, ix,iz)
 --        print("diffed.",ix,iz, h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom )
         local ltY,rtY,rbY,lbY = h4s.leftTop * CELLUNITSZ, h4s.rightTop * CELLUNITSZ, h4s.rightBottom * CELLUNITSZ, h4s.leftBottom * CELLUNITSZ
         local ltX,ltZ = ix*CELLUNITSZ, iz*CELLUNITSZ
@@ -207,9 +258,9 @@ function Field(w,h)
       {0,0,0,0,0,0,0,1,1,2,2,1,0},
       {0,0,0,0,0,0,0,1,1,2,2,1,0},
       {0,0,0,0,0,0,0,0,1,1,1,1,0},
-      {0,0,0,0,0,0,0,0,0,1,2,2,1},
-      {0,0,0,0,0,0,0,0,0,1,2,2,1},
-      {0,0,0,0,0,0,0,0,0,1,2,2,1},      
+      {0,0,0,0,0,0,0,0,0,1,2,2,1,0,0,0,0,1,1,1,2,2,2,1,1,1,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,1,2,2,1,0,0,0,0,1,1,1,2,2,2,1,1,1,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,1,2,2,1,0,0,0,0,1,1,1,2,2,2,1,1,1,0,0,0,0},
     }
     for i,row in ipairs(htbl) do
       for j,col in ipairs(row) do
