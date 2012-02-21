@@ -111,15 +111,26 @@ function Field(w,h)
   function f:mockMod(x,z,mod,callback)
     self:targetMod( self.mockHeights, x,z,mod,callback)
   end
-    
---  function f:mockMod(x,z,mod,callback)
---    assert( mod == 1 or mod == -1 )
---    local h = self:get(x,z)
---    if h <= 0 and mod == -1 then return end
---    self:setHeight(x,z,h+mod)
---    if callback then callback(x,z) end
---    self:checkSlopeMod(x,z,h,mod,callback)
---  end
+
+  -- 
+  function f:mockClear(x,z,callback)
+    local h = self:get(x,z)
+    local mockh = self:targetGet( self.mockHeights, x,z )
+
+    local dh = mockh - h
+    print( "DDDDDDDDD:", dh )
+    if dh == 0 then return end    
+    if dh > 0 then
+      for i=1,dh do
+        self:mockMod(x,z,-1,callback)
+      end
+    elseif dh < 0 then
+      for i=-1,dh,-1 do
+        self:mockMod(x,z,1,callback)
+      end
+    end
+  end
+  
 
   -- recurse. maximum slope rate is 1 per cell.
   f.dxdzTable = { {-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}}
@@ -218,7 +229,7 @@ function Field(w,h)
           self:fillCircle( x,z, range(1,5),CELLTYPE.SAND )          
         end
         if math.random() > 0.99 then
-          local upN = range(2,5)
+          local upN = range(2,4)
           for i=1,upN do
             self:landMod(x,z,1)
           end
