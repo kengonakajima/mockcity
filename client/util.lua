@@ -327,3 +327,13 @@ function errorHandler(erro)
   print( debug.traceback() )
   os.exit()
 end
+
+-- get between a,b by ratio of aa<=v<=bb
+-- get 3 if a,b=1,10 and aa=10,bb=100 and v=30
+function ratio(a,b,aa,bb, v)
+  local da = v - aa
+  local d = bb - aa
+  local r = da / d
+  return a + (b-a) * r
+end
+assert( int(ratio(1,10,10,100,30))==3)

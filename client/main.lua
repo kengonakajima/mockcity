@@ -11,14 +11,19 @@ require "./field"
 require "./textbox"
 require "./gui"
 
-math.randomseed(1)
+
 
 SCRW, SCRH = 960, 640
 
+ZOOM_MINY = 500
+ZOOM_MAXY = 30000
+
+
+
+math.randomseed(1)
 
 MOAISim.openWindow ( "test", SCRW, SCRH )
 MOAIGfxDevice.setClearDepth ( true )
-
 
 viewport = MOAIViewport.new ()
 viewport:setSize ( SCRW, SCRH )
@@ -146,25 +151,25 @@ end
 
 -- init all tools
 function initButtons()
-  local baseX, baseY = -SCRW/2 + 50, SCRH/2 - 100
+  local baseX, baseY = -SCRW/2 + 50, SCRH/2 - 360
   local x,y = baseX, baseY
-  y = y - BUTTONSIZE
-  upButton = makeButton( "up", x,y, guiDeck, 4, 49, function(down)
+
+  upButton = makeButton( "up", x,y, guiDeck, 4, 49, function(self,x,y,down)
       if down then selectButton(upButton) end      
     end)
   upButton.editMode = true
   y = y - BUTTONSIZE
-  downButton = makeButton( "down", x,y, guiDeck, 5, 50, function(down)
+  downButton = makeButton( "down", x,y, guiDeck, 5, 50, function(self,x,y,down)
       if down then selectButton(downButton) end
     end)
   downButton.editMode = true
   y = y - BUTTONSIZE
-  flatButton = makeButton( "flat", x,y, guiDeck, 3, 51, function(down)
+  flatButton = makeButton( "flat", x,y, guiDeck, 3, 51, function(self,x,y,down)
       if down then selectButton(flatButton) end
     end)
   flatButton.editMode = true  
   y = y - BUTTONSIZE  
-  clearButton = makeButton( "clear", x,y, guiDeck, 11, 52, function(down)
+  clearButton = makeButton( "clear", x,y, guiDeck, 11, 52, function(self,x,y,down)
       if down then selectButton(clearButton) end
     end)
   clearButton.editMode = false
@@ -178,13 +183,68 @@ function initButtons()
   end
 end
 
-function clearAllEditModeChunks()
-  for i,chk in ipairs(chunks) do
-    if chk.editMode then
-      chk:toggleEditMode(false)
-    end
+
+-- zoom slider
+function initZoomSlider()
+  local baseX, baseY = -SCRW/2 + 50, SCRH/2 - 80
+  local x,y = baseX, baseY
+
+  zoomInButton = makeButton( "zoomIn", x,y, guiDeck, 17, nil, function(self,x,y,down)
+      print("zin")
+      camera:retargetYrate( 0.5 )
+    end)
+  zoomInButton.flippable = false
+
+  zoomTable={}
+  for i=1,128 do
+    local yy = ZOOM_MINY * math.pow( 2, i / 16.0 )
+    if yy < ZOOM_MINY then yy = ZOOM_MINY end
+    if yy > ZOOM_MAXY then yy = ZOOM_MAXY end    
+    zoomTable[i] = yy
+  end
+  
+  zoomSliders = {}  
+  for i=1,4 do
+    y = y - BUTTONSIZE
+    local b = makeButton( "zoomSlider"..i, x,y, guiDeck, nil, nil, function(self,x,y,down)
+        local clickH = baseY - y - 16 -- 0 ~ 128
+        if clickH < 1 then clickH = 1 end
+        if clickH > 128 then clickH = 128 end
+        local toY = zoomTable[ clickH ]
+        camera:retargetY(toY)
+        print("slider:", baseY - y, "toy:", toY, zoom )
+      end)
+    b.slideIndex = i
+    b.flippable = false
+    b:setIndex(19)
+    table.insert(zoomSliders,b)
+  end
+  y = y - BUTTONSIZE
+  zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, nil, function(self,x,y,down)
+      print("zmin")
+      camera:retargetYrate( 2 )
+    end)
+  zoomOutButton.flippable = false
+
+  -- slider tab will be automatically updated when moving camera.
+  zoomSliderTab = makeButton( "sliderTab", baseX,baseY - BUTTONSIZE/2 - 4, guiDeck, nil, nil, nil )
+  zoomSliderTab:setIndex(20)
+  zoomSliderTab.baseY = baseY
+
+  function zoomSliderTab:update(cam)
+    local x,y,z = cam:getLoc()
+    print("upupupuiii:",z)
+    for i,v in ipairs(zoomTable) do      
+      if v >= y then
+        local xx,yy = self:getLoc()
+        self:setLoc(xx,self.baseY - BUTTONSIZE/2 - 4 - i )
+        break
+      end
+    end    
   end
 end
+
+
 
 
 ---------------
@@ -193,10 +253,9 @@ end
 keyState={}
 function onKeyboardEvent(k,dn)
   keyState[k] = dn
-
   processButtonShortcutKey(k,dn)
-  
 end
+
 MOAIInputMgr.device.keyboard:setCallback( onKeyboardEvent )
 
 lastPointerX,lastPointerY=nil,nil
@@ -323,6 +382,16 @@ function updateChunk(chx,chz)
   return p
 end
 
+function clearAllEditModeChunks()
+  for i,chk in ipairs(chunks) do
+    if chk.editMode then
+      chk:toggleEditMode(false)
+    end
+  end
+end
+
+
+
 chunks={}
 CHUNKRANGE = 16
 for chz=0,CHUNKRANGE-1 do
@@ -355,9 +424,27 @@ end
 -- cam
 camera = MOAICamera3D.new ()
 local z = camera:getFocalLength ( SCRW )
-camera:setLoc ( 0, 1200, 800 )
+camera:setFarPlane(100000)
+camera:setLoc ( 0, ZOOM_MINY, 800 )
 fieldLayer:setCamera ( camera )
 
+function camera:retargetYrate(yrate)
+  local cx,cy,cz = camera:getLoc()
+  local toY = cy * yrate
+  camera:retargetY(toY)
+end
+function camera:retargetY(toY)
+  if toY < ZOOM_MINY then
+    toY = ZOOM_MINY
+  elseif toY > ZOOM_MAXY then
+    toY = ZOOM_MAXY
+  end
+  print("toY:",toY)
+  cz = toY * 0.4
+  camera:setLoc(cx,toY,cz)
+  if zoomSliderTab then zoomSliderTab:update(camera) end
+end
+        
 function angle(x,y)
   local l = math.sqrt(x*x+y*y)
   local s = math.acos( x/l)
@@ -368,6 +455,10 @@ function angle(x,y)
   return s
 end
 
+camera:retargetY( ZOOM_MINY )
+
+
+-- cursor
 
 cursorProp = makeCursor()
 cursorProp:setLoc(0,CELLUNITSZ/2,0)
@@ -381,6 +472,7 @@ hudLayer:insertProp(statBox)
 ----------------
 
 initButtons()
+initZoomSlider()
 
 ----------------
 scrollX, scrollZ = 0,0
@@ -436,18 +528,19 @@ th:run(function()
       end
       if keyState[101] then --e
       end
-      
+
+      local prevcy = cy
       if keyState[32] then -- space
         if camera.flyUp then 
           cy = cy + 100
-          if cy > 7000 then
-            cy = 7000
+          if cy > ZOOM_MAXY then
+            cy = ZOOM_MAXY
             camera.flyUp = false          
           end
         else
           cy = cy - 100
-          if cy < 500 then
-            cy = 500
+          if cy < ZOOM_MINY then
+            cy = ZOOM_MINY
             camera.flyUp = true
           end
         end
@@ -456,13 +549,15 @@ th:run(function()
       if keyState[13] then -- enter
       end
 
+        
       cz = cy * 0.4
       camera:setLoc( cx, cy, cz )
+      if cy ~= prevcy and zoomSliderTab then zoomSliderTab:update(camera) end
 
       -- update cursor
       if lastPointerX then 
         local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
-        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
+--        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
 
         local camx,camy,camz = camera:getLoc()
 
@@ -480,6 +575,7 @@ th:run(function()
           cursorProp:setLoc(0,-999999,0) -- disappear
         end
       end
+
   
       coroutine.yield()
     end
