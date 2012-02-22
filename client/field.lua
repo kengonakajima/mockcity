@@ -88,7 +88,7 @@ function Field(w,h)
     if validMockNum == 0 then
       outmh = nil
     else
-      print("gerrect: num mh:", #outmh, basex, basez )
+--      print("gerrect: num mh:", #outmh, basex, basez )
       assert( #outmh == w * h)
     end    
     return outh, outt, outmh, outred

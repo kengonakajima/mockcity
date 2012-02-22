@@ -62,7 +62,6 @@ function makeHMProp(vx,vz)
     local hdata, tdata, mockdata, reddata = fld:getRect( vertx, vertz, CHUNKSZ+1, CHUNKSZ+1 )
     local showhdata ={}
     if editmode and mockdata then
-      print("ddddddd:", #hdata, #mockdata )
       showhdata = dupArray(mockdata)
       reddata = nil
     else
@@ -73,7 +72,6 @@ function makeHMProp(vx,vz)
     self:setDeck(hm)
     
     if not editmode and mockdata then
-      print("TTTTTTTTTTTTTTTT")
       if not self.mockp then 
         self.mockp = MOAIProp.new()
         fieldLayer:insertProp(self.mockp)
@@ -91,7 +89,7 @@ function makeHMProp(vx,vz)
       self.mockp:setCullMode( MOAIProp.CULL_BACK )
       self.mockp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
 
-      print("init mockprop. ",vertx, vertz )
+--      print("init mockprop. ",vertx, vertz )
     else
       if self.mockp then self.mockp:setDeck(nil) end
     end    
@@ -100,6 +98,7 @@ function makeHMProp(vx,vz)
   function p:toggleEditMode(mode)    
     self:updateHeightMap( self.vx, self.vz, mode )
     self.editMode = mode
+    moveWorld(0,0)
   end
   local origsetloc = p.setLoc
   function p:setLoc(x,y,z)
@@ -145,38 +144,39 @@ function initButtons()
   upButton = makeButton( "up", x,y, guiDeck, 4, 49, function(down)
       if down then selectButton(upButton) end      
     end)
+  upButton.editMode = true
   y = y - BUTTONSIZE
   downButton = makeButton( "down", x,y, guiDeck, 5, 50, function(down)
       if down then selectButton(downButton) end
     end)
+  downButton.editMode = true
   y = y - BUTTONSIZE
   flatButton = makeButton( "flat", x,y, guiDeck, 3, 51, function(down)
       if down then selectButton(flatButton) end
     end)
+  flatButton.editMode = true  
   y = y - BUTTONSIZE  
   clearButton = makeButton( "clear", x,y, guiDeck, 11, 52, function(down)
       if down then selectButton(clearButton) end
     end)
-
+  clearButton.editMode = false
   guiSelectModeCallback = function(b)
-    print( "guiSelectModeCallback changed to:", b )
-    if b == nil then
-      for i,chk in ipairs(chunks) do
-        if chk.editMode then
-          chk:toggleEditMode(false)
-        end
-      end
-    else
-      if lastControlX then
-        if b == upButton or b == downButton or b == flatButton then
-          setEditModeAroundCursor(lastControlX,lastControlZ)
-        end
-      end      
+    print( "guiSelectModeCallback changed to:", b, "lx:",lastControlX )
+    clearAllEditModeChunks()
+    if b and lastControlX then
+      setEditModeAroundCursor(lastControlX,lastControlZ, b.editMode)
     end
   end
 end
 
-
+function clearAllEditModeChunks()
+  print("LLLLLLLLLLLLLLLL")
+  for i,chk in ipairs(chunks) do
+    if chk.editMode then
+      chk:toggleEditMode(false)
+    end
+  end
+end
 
 
 ---------------
@@ -193,14 +193,74 @@ MOAIInputMgr.device.keyboard:setCallback( onKeyboardEvent )
 
 lastPointerX,lastPointerY=nil,nil
 
+function onMouseLeftDrag(mousex,mousey)
+  local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
+  local modH = 0
+  if guiSelectedButton == flatButton then
+    local h = fld:targetGet( fld.mockHeights, x,z )
+    local dh = h - flatButton.heightToSet
+    if dh == 0 then
+      modH = 0
+    elseif dh > 0 then
+      modH = -1
+    elseif dh < 0 then
+      modH = 1
+    end
+  elseif guiSelectedButton == upButton then
+    modH = 1
+  elseif guiSelectedButton == downButton then
+    modH = -1
+  elseif guiSelectedButton == clearButton then
+    local realh = fld:get(x,z)
+    local mockh = fld:targetGet(fld.mockHeights,x,z)
+    if realh > mockh then
+      modH = 1
+    elseif realh < mockh then
+      modH = -1
+    end      
+  end
+  if modH ~= 0 then
+    fld:mockMod(x,z,modH,updateCallback)
+    updateAllChunks()
+  end  
+  cursorProp:setAtGrid(true,x,z)     
+end
+
 function onPointerEvent(mousex,mousey)
   lastPointerX, lastPointerY = mousex, mousey
-  
+  if currentMouseLeftDown then
+    onMouseLeftDrag(mousex,mousey)
+  end  
 end
 
 MOAIInputMgr.device.pointer:setCallback( onPointerEvent )
 
+function updateCallback(x,z)
+  local chx, chz = int( x / CHUNKSZ ), int( z / CHUNKSZ )
+  for i,chunk in ipairs(chunks) do
+    if chunk.chx >= chx-1 and chunk.chx <= chx+1 and chunk.chz >= chz-1 and chunk.chz <= chz+1 then
+      chunk.toUpdate = true
+    end          
+  end        
+end
+function updateAllChunks()
+  -- check updated chunks
+  for i,chunk in ipairs(chunks) do
+    if chunk.toUpdate then
+      if guiSelectedButton then
+        chunk:toggleEditMode( guiSelectedButton.editMode )
+      end      
+      chunk.toUpdate = false
+    end
+  end
+end
+
+  
+currentMouseLeftDown = nil
 function onMouseLeftEvent(down)
+  currentMouseLeftDown = down
+
+  -- click events
   if not down then return end
   if not lastPointerX then return end
 
@@ -220,35 +280,18 @@ function onMouseLeftEvent(down)
   
   local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
 
-  function updateCallback(x,z)
-    local chx, chz = int( x / CHUNKSZ ), int( z / CHUNKSZ )
-    for i,chunk in ipairs(chunks) do
-      if chunk.chx >= chx-1 and chunk.chx <= chx+1 and chunk.chz >= chz-1 and chunk.chz <= chz+1 then
-        chunk.toUpdate = true
-      end          
-    end        
-  end
-
   if guiSelectedButton == upButton then
     fld:mockMod( x,z,1, updateCallback )
   elseif guiSelectedButton == downButton then
     fld:mockMod( x,z,-1, updateCallback )
   elseif guiSelectedButton == clearButton then
     fld:mockClear(x,z, updateCallback )
+  elseif guiSelectedButton == flatButton then
+    flatButton.heightToSet = fld:targetGet( fld.mockHeights, x,z)
+    print("HHHHHHHHHHHH:",  flatButton.heightToSet )
   end
 
-  -- check updated chunks
-  for i,chunk in ipairs(chunks) do
-    if chunk.toUpdate then
-      if guiSelectedButton == downButton or guiSelectedButton == upButton or guiSelectedButton == flatButton then
-        chunk:toggleEditMode(true)
-      else
-        chunk:toggleEditMode(false)
-      end      
-      chunk.toUpdate = false
-    end
-  end
-
+  updateAllChunks()
   cursorProp:setAtGrid( true, x,z )
 end
 
@@ -287,11 +330,11 @@ function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
   end
 end
 
-function setEditModeAroundCursor(ctlx,ctlz)
+function setEditModeAroundCursor(ctlx,ctlz,mode)
   local chx,chz =int(ctlx/CHUNKSZ), int(ctlz/CHUNKSZ)
   local chk = findChunkByCoord( chx-1,chz-1,chx+1,chz+1, function(chunk)
       if not chunk.editMode then
-        chunk:toggleEditMode(true)
+        chunk:toggleEditMode(mode)
       end
     end)
 end
@@ -409,18 +452,14 @@ th:run(function()
 
       local camx,camy,camz = camera:getLoc()
 
-      local editmode = false
-      if guiSelectedButton == upButton or guiSelectedButton == downButton or guiSelectedButton == flatButton then
-        editmode = true
-      end
-      
+      local editmode = guiSelectedButton and guiSelectedButton.editMode 
       local ctlx,ctlz = fld:findControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
       if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
         lastControlX, lastControlZ = ctlx, ctlz
         cursorProp:setAtGrid(editmode, ctlx,ctlz)
 
         if editmode then
-          setEditModeAroundCursor(ctlx,ctlz)
+          setEditModeAroundCursor(ctlx,ctlz, editmode)
         end
         
       else
