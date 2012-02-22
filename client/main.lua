@@ -460,25 +460,26 @@ th:run(function()
       camera:setLoc( cx, cy, cz )
 
       -- update cursor
-      local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
---      print("pointer:", px,py,pz, xn,yn,zn )
+      if lastPointerX then 
+        local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
+        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
 
-      local camx,camy,camz = camera:getLoc()
+        local camx,camy,camz = camera:getLoc()
 
-      local editmode = guiSelectedButton and guiSelectedButton.editMode 
-      local ctlx,ctlz = fld:findControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
-      if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
-        lastControlX, lastControlZ = ctlx, ctlz
-        cursorProp:setAtGrid(editmode, ctlx,ctlz)
+        local editmode = guiSelectedButton and guiSelectedButton.editMode 
+        local ctlx,ctlz = fld:findControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+        if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
+          lastControlX, lastControlZ = ctlx, ctlz
+          cursorProp:setAtGrid(editmode, ctlx,ctlz)
 
-        if editmode then
-          setEditModeAroundCursor(ctlx,ctlz, editmode)
+          if editmode then
+            setEditModeAroundCursor(ctlx,ctlz, editmode)
+          end
+          
+        else
+          cursorProp:setLoc(0,-999999,0) -- disappear
         end
-        
-      else
-        cursorProp:setLoc(0,-999999,0) -- disappear
       end
-
   
       coroutine.yield()
     end

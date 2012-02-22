@@ -130,11 +130,11 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
         -- need only 4 vert in line mode.
         local baseVertOffset = (cellCnt-1) * 4
         local baseU, baseV = tileIndexToUV(CELLTYPE.WHITE)
-        
-        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, 1,0,0 ) -- A
-        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU,baseV, 1,0,0 ) -- B
-        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,0,0 )  -- C
-        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,0,0 ) -- D
+        baseU, baseV = baseU + DECKSTEP/2, baseV + DECKSTEP/2
+        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, 1,1,1 ) -- A
+        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU,baseV, 1,1,1 ) -- B
+        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,1,1 )  -- C
+        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,1,1 ) -- D
         -- A-B
         ib:setIndex( indexCnt, 1 + baseVertOffset )
         ib:setIndex( indexCnt+1, 2 + baseVertOffset )
