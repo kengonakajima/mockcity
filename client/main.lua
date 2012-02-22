@@ -18,6 +18,7 @@ SCRW, SCRH = 960, 640
 ZOOM_MINY = 500
 ZOOM_MAXY = 30000
 
+CURSOR_MAXY = 3000
 
 
 math.randomseed(1)
@@ -228,12 +229,12 @@ function initZoomSlider()
 
   -- slider tab will be automatically updated when moving camera.
   zoomSliderTab = makeButton( "sliderTab", baseX,baseY - BUTTONSIZE/2 - 4, guiDeck, nil, nil, nil )
+  zoomSliderTab.flippable = false
   zoomSliderTab:setIndex(20)
   zoomSliderTab.baseY = baseY
 
   function zoomSliderTab:update(cam)
     local x,y,z = cam:getLoc()
-    print("upupupuiii:",z)
     for i,v in ipairs(zoomTable) do      
       if v >= y then
         local xx,yy = self:getLoc()
@@ -464,6 +465,17 @@ cursorProp = makeCursor()
 cursorProp:setLoc(0,CELLUNITSZ/2,0)
 fieldLayer:insertProp(cursorProp)
 
+function disappearCursor()
+  if not cursorProp then return false end
+  local x,y,z = cursorProp:getLoc()
+  if y ~= -999999 then
+    cursorProp:setLoc(0,-999999,0)
+    return true
+  else
+    return false
+  end  
+end
+
 
 ----------------
 statBox = makeTextBox( -SCRW/2,SCRH/2, "init")
@@ -560,22 +572,33 @@ th:run(function()
 --        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
 
         local camx,camy,camz = camera:getLoc()
+        local editmode = guiSelectedButton and guiSelectedButton.editMode
+        
+        if camy < CURSOR_MAXY then
+--          local st = os.clock()
+          local ctlx,ctlz = fld:findControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+--          local et = os.clock()
+--          print("t:", (et-st))
+          if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
+            lastControlX, lastControlZ = ctlx, ctlz
+            cursorProp:setAtGrid(editmode, ctlx,ctlz)
 
-        local editmode = guiSelectedButton and guiSelectedButton.editMode 
-        local ctlx,ctlz = fld:findControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
-        if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
-          lastControlX, lastControlZ = ctlx, ctlz
-          cursorProp:setAtGrid(editmode, ctlx,ctlz)
-
-          if editmode then
-            setEditModeAroundCursor(ctlx,ctlz, editmode)
+            if editmode then
+              setEditModeAroundCursor(ctlx,ctlz, editmode)
+            end
+          else
+            disappearCursor()            
           end
-          
         else
-          cursorProp:setLoc(0,-999999,0) -- disappear
+          disappearCursor()
+          clearAllEditModeChunks()
+          if guiSelectedButton then
+            guiSelectedButton.selected = false
+            guiSelectedButton = nil
+            updateButtonBGs()
+          end
         end
-      end
-
+      end      
   
       coroutine.yield()
     end
