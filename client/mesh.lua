@@ -177,7 +177,7 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
           end
           lg = lg * lightRate
           r,g,b = lg,lg,lg
-          if toRed then r,g,b=1,g*0.5,b*0.5 end
+          if toRed then r,g,b=1,g*0.7,b*0.7 end
           vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, r,g,b ) -- A
           vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV, r,g,b ) -- B
           vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP, r,g,b )  -- C
@@ -191,7 +191,7 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
           end
           lg = lg * lightRate
           r,g,b = lg,lg,lg
-          if toRed then r,g,b = 1,g*0.5,b*0.5 end
+          if toRed then r,g,b = 1,g*0.7,b*0.7 end
           vb:pushVert( basex, leftTopHeight, basez,  baseU, baseV, r,g,b )-- A
           vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP, r,g,b ) -- C
           vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP, r,g,b ) -- D
@@ -211,7 +211,7 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
           end
           lg = lg * lightRate
           r,g,b = lg,lg,lg
-          if toRed then r,g,b=1,g*0.5,b*0.5 end
+          if toRed then r,g,b=1,g*0.7,b*0.7 end
           vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, r,g,b ) --A
           vb:pushVert( basex+sz, rightTopHeight, basez, baseU + DECKSTEP, baseV, r,g,b ) --B
           vb:pushVert( basex, leftBottomHeight, basez+sz, baseU, baseV + DECKSTEP, r,g,b ) --D
@@ -231,7 +231,7 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
           end
           lg = lg * lightRate
           r,g,b = lg,lg,lg
-          if toRed then r,g,b = 1,g*0.5,b*0.5 end
+          if toRed then r,g,b = 1,g*0.7,b*0.7 end
           vb:pushVert( basex + sz, rightTopHeight, basez,  baseU + DECKSTEP,baseV, r,g,b ) -- B
           vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU + DECKSTEP, baseV + DECKSTEP, r,g,b ) -- C
           vb:pushVert( basex, leftBottomHeight, basez + sz, baseU, baseV + DECKSTEP, r,g,b ) -- D

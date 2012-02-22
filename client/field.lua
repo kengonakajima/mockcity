@@ -281,7 +281,7 @@ function Field(w,h)
     self:copyHeightToMock()
     for i,row in ipairs(mocktbl) do
       for j,col in ipairs(row) do
-        self:setMockHeight( j-1,i-1, col )
+--        self:setMockHeight( j-1,i-1, col )
       end
     end    
       

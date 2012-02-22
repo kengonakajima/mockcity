@@ -15,6 +15,7 @@ math.randomseed(1)
 
 SCRW, SCRH = 960, 640
 
+
 MOAISim.openWindow ( "test", SCRW, SCRH )
 MOAIGfxDevice.setClearDepth ( true )
 
@@ -32,6 +33,13 @@ hudLayer = MOAILayer2D.new()
 hudLayer:setViewport(viewport)
 MOAISim.pushRenderPass(hudLayer)
 
+MOAIUntzSystem.initialize( 44100, 1024 )
+
+clkSound = MOAIUntzSound.new()
+clkSound:load( "sounds/clk.wav" )
+clkSound:setVolume( 0.4 )
+btnSound = MOAIUntzSound.new()
+btnSound:load( "sounds/whip.wav" )
 
 
 guiDeck = loadTileDeck2( "./images/guibase.png", 8,8, 32, 256,256, nil,true)
@@ -161,8 +169,9 @@ function initButtons()
     end)
   clearButton.editMode = false
   guiSelectModeCallback = function(b)
-    print( "guiSelectModeCallback changed to:", b, "lx:",lastControlX )
+--    print( "guiSelectModeCallback changed to:", b, "lx:",lastControlX )
     clearAllEditModeChunks()
+    if b then btnSound:play() end
     if b and lastControlX then
       setEditModeAroundCursor(lastControlX,lastControlZ, b.editMode)
     end
@@ -170,7 +179,6 @@ function initButtons()
 end
 
 function clearAllEditModeChunks()
-  print("LLLLLLLLLLLLLLLL")
   for i,chk in ipairs(chunks) do
     if chk.editMode then
       chk:toggleEditMode(false)
@@ -221,6 +229,7 @@ function onMouseLeftDrag(mousex,mousey)
   end
   if modH ~= 0 then
     fld:mockMod(x,z,modH,updateCallback)
+    clkSound:play()
     updateAllChunks()
   end  
   cursorProp:setAtGrid(true,x,z)     
@@ -280,17 +289,19 @@ function onMouseLeftEvent(down)
   
   local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
 
-  if guiSelectedButton == upButton then
-    fld:mockMod( x,z,1, updateCallback )
-  elseif guiSelectedButton == downButton then
-    fld:mockMod( x,z,-1, updateCallback )
-  elseif guiSelectedButton == clearButton then
-    fld:mockClear(x,z, updateCallback )
-  elseif guiSelectedButton == flatButton then
-    flatButton.heightToSet = fld:targetGet( fld.mockHeights, x,z)
-    print("HHHHHHHHHHHH:",  flatButton.heightToSet )
+  if guiSelectedButton then
+    if guiSelectedButton == upButton then
+      fld:mockMod( x,z,1, updateCallback )
+    elseif guiSelectedButton == downButton then
+      fld:mockMod( x,z,-1, updateCallback )
+    elseif guiSelectedButton == clearButton then
+      fld:mockClear(x,z, updateCallback )
+    elseif guiSelectedButton == flatButton then
+      flatButton.heightToSet = fld:targetGet( fld.mockHeights, x,z)
+    end
+    clkSound:play()
   end
-
+  
   updateAllChunks()
   cursorProp:setAtGrid( true, x,z )
 end
@@ -399,7 +410,9 @@ th:run(function()
         lastPrintAt = t
         local x,z = lastControlX or 0, lastControlZ or 0
         local y = fld:get(x,z)
-        statBox:setString( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. #chunks )
+        local curmode = "PRESENT"
+        if guiSelectedButton and guiSelectedButton.editMode then curmode = "FUTURE" end
+        statBox:setString( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. #chunks .. "  " .. curmode )
         frameCnt = 0
       end
 
