@@ -34,6 +34,7 @@ function makeTextBox( x,y, str, width )
   t:setFont(font)
   t:setTextSize(font:getScale())
   t:setRect(-SCRW/2,-SCRH/2,SCRW/2,SCRH/2)       -- TODO?
+
   t:setYFlip(true)
   -- yflipしてる場合、0,0にすると左上で、+xが右、 +yが上、なので
   t:setLoc( x +SCRW/2, y - SCRH/2 )
@@ -56,22 +57,32 @@ function makeTextBox( x,y, str, width )
   hudLayer:insertProp(bgp)
   t.bgProp = bgp
   function t:updateBG()
+    local x,y = self:getWorldLoc()
+    local th = font:getScale()
     if self.fixedWidth then
-      local x,y = self:getLoc()
-      local th = font:getScale()
-      self.bgProp:setLoc(x-SCRW/2 + self.fixedWidth/2,y+SCRH/2 - th/2 )
+      self.bgProp:setLoc(x + self.fixedWidth/2,y-th/2 )
       self.bgProp:setScl(self.fixedWidth,th)
     else
       local x1,y1,x2,y2 = self:getStringBounds(1,9999)
-      local cx,cy = avg(x1,x2), avg(y1,y2)
-      self.bgProp:setLoc(cx,-cy)
-      self.bgProp:setScl((x2-x1),(y2-y1))
+      if x1 then
+        local w = x2-x1
+        self.bgProp:setLoc(x+w/2,y-th/2)
+        self.bgProp:setScl(w,th)
+      else
+        self.bgProp:setLoc(-999999,-999999) -- out of the screen
+      end      
     end    
   end
   function t:set(s)
+    if not s then s = "" end
+    self.text = s
     self:setString(s)
     self:updateBG()
   end
+  function t:getString()
+    return self.text
+  end
+  
   t:updateBG()
   
   hudLayer:insertProp(t)
@@ -101,8 +112,14 @@ function makeChatBox(x,y)
     local flg = int(self.accumTime*5) % 2
     local x,y = self:getWorldLoc()
     local x1,y1,x2,y2 = self:getStringBounds(1,9999)
-    local cursorx = x2
-    if not x1 then cursorx = x end
+    local cursorx = nil
+    if not x1 then
+      cursorx = x
+    else
+      local w = x2 - x1
+      cursorx = x + w
+    end
+
     local th = font:getScale()
     
     if flg == 0 then

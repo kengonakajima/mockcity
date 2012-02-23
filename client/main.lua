@@ -188,7 +188,6 @@ function initButtons()
     end)
   clearButton.editMode = false
   guiSelectModeCallback = function(b)
---    print( "guiSelectModeCallback changed to:", b, "lx:",lastControlX )
     clearAllEditModeChunks()
     if b then btnSound:play() end
     if b and lastControlX then
@@ -196,6 +195,27 @@ function initButtons()
     end
   end
 end
+
+
+-- log lines
+function initLogLines()
+  local baseX, baseY = -SCRW/2 + 80, 0
+  local maxLogLineNum = 14
+  logLines = {}
+  for i = 1,maxLogLineNum do
+    local x,y = baseX, baseY - i * font:getScale()
+    print("xxxx:",x,y)
+    local line = makeTextBox(x,y, "" )
+    table.insert( logLines, line )
+  end  
+end
+function appendLog(s)
+  for i=1,#logLines-1 do -- up, younger number
+    logLines[i]:set( logLines[i+1]:getString() )
+  end
+  logLines[ #logLines ]:set(s)
+end
+
 
 
 -- zoom slider
@@ -261,7 +281,7 @@ end
 
 -- chat
 function startChatMode()
-  if not chatBox then chatBox = makeChatBox(-SCRW/2,-SCRH/2+40) end
+  if not chatBox then chatBox = makeChatBox(-SCRW/2 + 80,-SCRH/2+40) end
 end
 function endChatMode(toSend)
   if chatBox then
@@ -537,8 +557,14 @@ statBox = makeTextBox( -SCRW/2,SCRH/2, "init")
 
 -- init GUIs
 
+initLogLines()
+
 initButtons()
 initZoomSlider()
+
+
+appendLog( "asdf")
+appendLog( "aksdjfalsdkfjka")
 
 -- network
 
@@ -560,6 +586,7 @@ conn:on("complete", function()
       end)
     conn:on("chatNotify", function(arg)
         print("chatNotify. text:", arg.text )
+        appendLog( arg.text )
       end)
   end)
 
