@@ -27,10 +27,30 @@ function makeTextBox( x,y, str )
   -- yflipしてる場合、0,0にすると左上で、+xが右、 +yが上、なので
   t:setLoc( x +SCRW/2, y - SCRH/2 )
   t:setColor(1,1,1)
-  t.resetLoc =
-  function(self,x,y)
+  function t:resetLoc(self,x,y)
     self:setLoc( x+SCRW/2, y - SCRH/2 )
   end
+
+  local bgp = MOAIProp2D.new()
+  bgp:setDeck( guiDeck )
+  bgp:setIndex(25)
+  bgp:setColor(0,0,0,0.3)
+  hudLayer:insertProp(bgp)
+  t.bgProp = bgp
+  function t:updateBG()
+    local x1,y1,x2,y2 = self:getStringBounds(1,9999)
+    local cx,cy = avg(x1,x2), avg(y1,y2)
+
+    print( "ccccccccc:",cx,cy)
+    self.bgProp:setLoc(cx,-cy)
+    self.bgProp:setScl((x2-x1),(y2-y1))
+  end
+  function t:set(s)
+    self:setString(s)
+    self:updateBG()
+  end
   
+  hudLayer:insertProp(t)
   return t
 end
+

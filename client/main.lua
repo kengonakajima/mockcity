@@ -268,6 +268,14 @@ keyState={}
 function onKeyboardEvent(k,dn)
   keyState[k] = dn
   processButtonShortcutKey(k,dn)
+
+  -- for debug
+  if dn then
+    if k == 108 then --l
+      print("sssssss:", statBox:getStringBounds( 1,9999))
+    end    
+  end
+  
 end
 
 MOAIInputMgr.device.keyboard:setCallback( onKeyboardEvent )
@@ -492,7 +500,6 @@ end
 
 ----------------
 statBox = makeTextBox( -SCRW/2,SCRH/2, "init")
-hudLayer:insertProp(statBox)
 
 -- init GUIs
 
@@ -551,7 +558,7 @@ th:run(function()
         local y = fld:get(x,z)
         local curmode = "PRESENT"
         if guiSelectedButton and guiSelectedButton.editMode then curmode = "FUTURE" end
-        statBox:setString( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. #chunks .. "  " .. curmode )
+        statBox:set( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. #chunks .. "  " .. curmode )
         frameCnt = 0
       end
 
