@@ -261,8 +261,18 @@ end
 
 -- chat
 function startChatMode()
-  chatBox = makeTextBox( 80,50, "aaa", 200 )
+  if not chatBox then chatBox = makeChatBox(-SCRW/2,-SCRH/2+40) end
 end
+function endChatMode(toSend)
+  if chatBox then
+    if toSend and conn then
+      conn:emit("chat", { text = chatBox.content } )
+    end
+    chatBox:clean()
+    chatBox=nil
+  end  
+end
+
 
 
 ---------------
@@ -270,19 +280,36 @@ end
 
 keyState={}
 function onKeyboardEvent(k,dn)
-  keyState[k] = dn
-  local skhit = processButtonShortcutKey(k,dn)
-
-  if not skhit and dn then
-    if k == 13 then -- start chat
-      startChatMode()    
-    end
-    
-    if k == 108 then --l
-      print("sssssss:", statBox:getStringBounds( 1,9999))
-    end    
-  end
   
+  local hit = processButtonShortcutKey(k,dn)
+
+  if not hit and dn then
+    print("keyhit:", k, chatBox )
+    if k == 13 then -- start chat
+      if chatBox then
+        endChatMode(true)
+      else
+        startChatMode()
+      end      
+    end
+
+    if chatBox then
+      if chatBox:receive(k) then
+        hit = true
+      end
+      if k == 127 then -- delete
+        chatBox:delete()
+      end      
+    else
+      if k == 108 then --l
+        print("sssssss:", statBox:getStringBounds( 1,9999))
+      end
+    end
+  end
+
+  if not hit then
+    keyState[k] = dn
+  end
 end
 
 MOAIInputMgr.device.keyboard:setCallback( onKeyboardEvent )
@@ -528,8 +555,11 @@ end
 conn:on("complete", function()
     print("connected to server")
     conn:sendLog( "complete" )
-    conn:on( "hello", function(arg)
+    conn:on("hello", function(arg)
         print("server revision:", arg.revision )
+      end)
+    conn:on("chatNotify", function(arg)
+        print("chatNotify. text:", arg.text )
       end)
   end)
 
@@ -555,8 +585,11 @@ th = MOAICoroutine.new()
 th:run(function()
     local xrot,frameCnt = 0,0
     local lastPrintAt = 0
+    local prevTime = 0
     while true do
       local t = now()
+      local dt = t - prevTime
+      
       -- game status
       frameCnt = frameCnt + 1
       if lastPrintAt < t - 1 then
@@ -649,6 +682,9 @@ th:run(function()
         end
       end      
 
+      -- chat
+      if chatBox then chatBox:update(dt) end
+      
       -- network
       if conn then
         conn:poll()
@@ -657,7 +693,8 @@ th:run(function()
           end)
         
       end
-      
+
+      prevTime = t
       coroutine.yield()
     end
   end)
