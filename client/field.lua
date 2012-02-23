@@ -5,7 +5,6 @@ function Field(w,h)
     height = h,
     heights = {},
     mockHeights = {},
-    origHeights = {},
     types = {} -- vertex has cell type.
   }
 
@@ -156,18 +155,6 @@ function Field(w,h)
         to[i] = from[i]
       end
     end    
-  end
-  function f:copyHeightsToOrigHeights(x1,z1,x2,z2)
-    self:copyHeights( self.heights, self.origHeights, x1,z1,x2,z2 )
-  end
-  function f:copyMockHeightsToHeights(x1,z1,x2,z2)
-    self:copyHeights( self.mockHeights, self.heights, x1,z1,x2,z2 )
-  end
-  function f:copyHeightsToMockHeights(x1,z1,x2,z2)
-    self:copyHeights( self.heights, self.mockHeights, x1,z1,x2,z2 )
-  end
-  function f:copyOrigHeightsToHeights(x1,z1,x2,z2)
-    self:copyHeights( self.origHeights, self.heights, x1,z1,x2,z2 )
   end
   
   -- t: fill type

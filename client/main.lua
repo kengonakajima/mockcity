@@ -10,8 +10,21 @@ require "./mesh"
 require "./field"
 require "./textbox"
 require "./gui"
+require "./config" 
 
+package.path = package.path .. ";./deps/lua-msgpack/?.lua;"
 
+require "./deps/lua-msgpack/msgpack" 
+require "./deps/lua-mprpc/mprpc"
+require "./netemu"
+
+local net = netemu
+
+assert( msgpack and net and mprpc )
+
+rpc = mprpc.create(net,msgpack)
+
+-----------------    
 
 SCRW, SCRH = 960, 640
 
@@ -481,10 +494,32 @@ end
 statBox = makeTextBox( -SCRW/2,SCRH/2, "init")
 hudLayer:insertProp(statBox)
 
-----------------
+-- init GUIs
 
 initButtons()
 initZoomSlider()
+
+-- network
+
+conn = rpc:connect( SERVER_ADDR, SERVER_PORT )
+assert(conn)
+conn.doLog = true
+
+function conn:sendLog(...)
+  local s = table.concat({...},"")
+  print( "sendLog:", s, conn )
+  self:emit( "putLog", { text=s } )
+end
+
+conn:on("complete", function()
+    print("connected to server")
+    conn:sendLog( "complete" )
+    conn:on( "hello", function(arg)
+        print("server revision:", arg.revision )
+      end)
+  end)
+
+
 
 ----------------
 scrollX, scrollZ = 0,0
@@ -599,7 +634,16 @@ th:run(function()
           end
         end
       end      
-  
+
+      -- network
+      if conn then
+        conn:poll()
+        conn:pollMessage( function()
+            return true
+          end)
+        
+      end
+      
       coroutine.yield()
     end
   end)

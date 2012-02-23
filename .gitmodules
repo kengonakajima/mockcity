@@ -1,0 +1,6 @@
+[submodule "client/deps/lua-mprpc"]
+	path = client/deps/lua-mprpc
+	url = git@github.com:kengonakajima/lua-mprpc.git
+[submodule "client/deps/lua-msgpack"]
+	path = client/deps/lua-msgpack
+	url = git@github.com:kengonakajima/lua-msgpack.git
