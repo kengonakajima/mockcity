@@ -16,7 +16,7 @@ function ensureFont()
 end
 
 -- convert screen coord to hud view coord
-function makeTextBox( x,y, str )
+function makeTextBox( x,y, str, width )
   ensureFont()
   local t = MOAITextBox.new()
   t:setString(str)
@@ -27,6 +27,9 @@ function makeTextBox( x,y, str )
   -- yflipしてる場合、0,0にすると左上で、+xが右、 +yが上、なので
   t:setLoc( x +SCRW/2, y - SCRH/2 )
   t:setColor(1,1,1)
+
+  t.fixedWidth = width
+  
   function t:resetLoc(self,x,y)
     self:setLoc( x+SCRW/2, y - SCRH/2 )
   end
@@ -38,17 +41,26 @@ function makeTextBox( x,y, str )
   hudLayer:insertProp(bgp)
   t.bgProp = bgp
   function t:updateBG()
-    local x1,y1,x2,y2 = self:getStringBounds(1,9999)
-    local cx,cy = avg(x1,x2), avg(y1,y2)
+    if self.fixedWidth then
+      local x,y = self:getLoc()
+      local th = font:getScale()
+      self.bgProp:setLoc(x-SCRW/2 + self.fixedWidth/2,y+SCRH/2 - th/2 )
+      self.bgProp:setScl(self.fixedWidth,th)
+      print("xxx",x,y, font:getScale())      
+    else
+      local x1,y1,x2,y2 = self:getStringBounds(1,9999)
+      local cx,cy = avg(x1,x2), avg(y1,y2)
 
-    print( "ccccccccc:",cx,cy)
-    self.bgProp:setLoc(cx,-cy)
-    self.bgProp:setScl((x2-x1),(y2-y1))
+      print( "ccccccccc:",cx,cy)
+      self.bgProp:setLoc(cx,-cy)
+      self.bgProp:setScl((x2-x1),(y2-y1))
+    end    
   end
   function t:set(s)
     self:setString(s)
     self:updateBG()
   end
+  t:updateBG()
   
   hudLayer:insertProp(t)
   return t

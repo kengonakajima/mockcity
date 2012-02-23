@@ -259,6 +259,10 @@ function initZoomSlider()
 end
 
 
+-- chat
+function startChatMode()
+  chatBox = makeTextBox( 80,50, "aaa", 200 )
+end
 
 
 ---------------
@@ -267,10 +271,13 @@ end
 keyState={}
 function onKeyboardEvent(k,dn)
   keyState[k] = dn
-  processButtonShortcutKey(k,dn)
+  local skhit = processButtonShortcutKey(k,dn)
 
-  -- for debug
-  if dn then
+  if not skhit and dn then
+    if k == 13 then -- start chat
+      startChatMode()    
+    end
+    
     if k == 108 then --l
       print("sssssss:", statBox:getStringBounds( 1,9999))
     end    
