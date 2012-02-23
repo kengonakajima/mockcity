@@ -6,7 +6,7 @@
 
 -- now moai three-dee  loadFromTTF is broken 
 
-charcodes = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:;!?()&/-'
+charcodes = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 .,:;!?()&/-'
 font = nil
 function ensureFont()
   if not font then 
@@ -82,6 +82,11 @@ function makeTextBox( x,y, str, width )
   function t:getString()
     return self.text
   end
+  function t:noBG()
+    hudLayer:removeProp(self.bgProp)
+    self.bgProp = nil
+  end
+  
   
   t:updateBG()
   

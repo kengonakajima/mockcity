@@ -22,6 +22,15 @@ function makeButton( name, x,y, deck, index, keycode, callback )
     hudLayer:insertProp(iconp)
     p.iconprop = iconp
   end
+
+  if keycode then
+    local fs = font:getScale()
+    local s = string.char(keycode)
+    p.shortcutProp = makeTextBox( x-BUTTONSIZE*0.5-fs,y+BUTTONSIZE/4, s, fs)
+    p.shortcutProp:setColor(1,1,1,0.4)
+    p.shortcutProp:noBG()
+  end
+  
   
   p.hitRect = { x1 = x -BUTTONSIZE/2, y1 = y-BUTTONSIZE/2, x2=x+BUTTONSIZE/2, y2=y+BUTTONSIZE/2 }
   p.callback = callback
