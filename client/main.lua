@@ -169,22 +169,22 @@ function initButtons()
   local x,y = baseX, baseY
 
   upButton = makeButton( "up", x,y, guiDeck, 4, 49, function(self,x,y,down)
-      if down then selectButton(upButton) end      
+      if down and lastControlX then selectButton(upButton) end      
     end)
   upButton.editMode = true
   y = y - BUTTONSIZE
   downButton = makeButton( "down", x,y, guiDeck, 5, 50, function(self,x,y,down)
-      if down then selectButton(downButton) end
+      if down and lastControlX then selectButton(downButton) end
     end)
   downButton.editMode = true
   y = y - BUTTONSIZE
   flatButton = makeButton( "flat", x,y, guiDeck, 3, 51, function(self,x,y,down)
-      if down then selectButton(flatButton) end
+      if down and lastControlX then selectButton(flatButton) end
     end)
   flatButton.editMode = true  
   y = y - BUTTONSIZE  
   clearButton = makeButton( "clear", x,y, guiDeck, 11, 52, function(self,x,y,down)
-      if down then selectButton(clearButton) end
+      if down and lastControlX then selectButton(clearButton) end
     end)
   clearButton.editMode = false
   guiSelectModeCallback = function(b)
@@ -223,7 +223,7 @@ function initZoomSlider()
   local baseX, baseY = -SCRW/2 + 50, SCRH/2 - 80
   local x,y = baseX, baseY
 
-  zoomInButton = makeButton( "zoomIn", x,y, guiDeck, 17, nil, function(self,x,y,down)
+  zoomInButton = makeButton( "zoomIn", x,y, guiDeck, 17, byte("j"), function(self,x,y,down)
       print("zin")
       camera:retargetYrate( 0.5 )
     end)
@@ -254,7 +254,7 @@ function initZoomSlider()
     table.insert(zoomSliders,b)
   end
   y = y - BUTTONSIZE
-  zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, nil, function(self,x,y,down)
+  zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("k"), function(self,x,y,down)
       print("zmin")
       camera:retargetYrate( 2 )
     end)

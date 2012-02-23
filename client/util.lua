@@ -337,3 +337,7 @@ function ratio(a,b,aa,bb, v)
   return a + (b-a) * r
 end
 assert( int(ratio(1,10,10,100,30))==3)
+
+function byte(s)
+  return string.byte(s,1)
+end

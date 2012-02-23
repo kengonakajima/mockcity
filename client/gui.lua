@@ -43,7 +43,7 @@ end
 function processButtonShortcutKey(keycode,down)
   for i,v in ipairs(buttons) do
     if v.keyCode == keycode then
-      v:callback(down)
+      v:callback(nil,nil,down)
       return true
     end
   end
