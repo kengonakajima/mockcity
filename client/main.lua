@@ -255,7 +255,6 @@ function initZoomSlider()
   end
   y = y - BUTTONSIZE
   zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("k"), function(self,x,y,down)
-      print("zmin")
       camera:retargetYrate( 2 )
     end)
   zoomOutButton.flippable = false
@@ -267,13 +266,18 @@ function initZoomSlider()
   zoomSliderTab.baseY = baseY
 
   function zoomSliderTab:update(cam)
+    local xx,yy = self:getLoc()
     local x,y,z = cam:getLoc()
     for i,v in ipairs(zoomTable) do      
       if v >= y then
-        local xx,yy = self:getLoc()
+        
         self:setLoc(xx,self.baseY - BUTTONSIZE/2 - 4 - i )
         break
       end
+    end
+    if y == ZOOM_MAXY then
+      local bx,by = zoomOutButton:getLoc()
+      self:setLoc(xx,by+BUTTONSIZE - BUTTONSIZE/2+4)
     end    
   end
 end
