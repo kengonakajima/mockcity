@@ -79,7 +79,7 @@ cursorDeck = loadGfxQuad( "./images/cursor.png" )
 
 CELLUNITSZ = 32
 
-MOCKEPSILON = 2
+MOCKEPSILON = 1
 -- vx,vy : starts from zero, grid coord.
 function makeHMProp(vx,vz)
   local p = MOAIProp.new()
@@ -184,7 +184,7 @@ function makeHMProp(vx,vz)
   function p:poll()
     if self.state == "init" then
       if conn then
-        print("load rect:", self.state, self.vx, self.vz )      
+--        print("load rect:", self.state, self.vx, self.vz )      
         conn:emit("getFieldRect", {
             x1 = self.vx,
             z1 = self.vz,
@@ -236,28 +236,31 @@ function initButtons()
   local x,y = baseX, baseY
 
   upButton = makeButton( "up", x,y, guiDeck, 4, byte("1"), function(self,x,y,down)
-      if down and lastControlX then selectButton(upButton) end      
+      if down then selectButton(upButton) end      
     end)
   upButton.editMode = true
   y = y - BUTTONSIZE
   downButton = makeButton( "down", x,y, guiDeck, 5, byte("2"), function(self,x,y,down)
-      if down and lastControlX then selectButton(downButton) end
+      if down then selectButton(downButton) end
     end)
   downButton.editMode = true
   y = y - BUTTONSIZE
   flatButton = makeButton( "flat", x,y, guiDeck, 3, byte("3"), function(self,x,y,down)
-      if down and lastControlX then selectButton(flatButton) end
+      if down then selectButton(flatButton) end
     end)
   flatButton.editMode = true  
   y = y - BUTTONSIZE  
   clearButton = makeButton( "clear", x,y, guiDeck, 11, byte("4"), function(self,x,y,down)
-      if down and lastControlX then selectButton(clearButton) end
+      if down then selectButton(clearButton) end
     end)
   clearButton.editMode = false
   guiSelectModeCallback = function(b)
     clearAllEditModeChunks()
     if b then btnSound:play() end
-    if b and lastControlX then
+    if b then
+      if not lastControlX then
+        lastControlX, lastControlZ = 0,0
+      end      
       setEditModeAroundCursor(lastControlX,lastControlZ, b.editMode)
     end
   end
@@ -366,6 +369,13 @@ end
 
 
 ---------------
+
+function modMock(x,z,dh)
+  if conn then
+    conn:emit("modifyMock", { x=x,z=z,mod=dh } )
+  end  
+end
+
 -- input
 
 keyState={}
@@ -432,9 +442,8 @@ function onMouseLeftDrag(mousex,mousey)
     end      
   end
   if modH ~= 0 then
-    mockMod(x,z,modH,updateCallback)
+    modMock(x,z,modH)
     clkSound:play()
-    updateAllChunks()
   end  
   cursorProp:setAtGrid(true,x,z)     
 end
@@ -456,6 +465,7 @@ function updateCallback(x,z)
     end          
   end        
 end
+
 function updateAllChunks()
   -- check updated chunks
   for i,chunk in ipairs(chunks) do
@@ -495,18 +505,17 @@ function onMouseLeftEvent(down)
 
   if guiSelectedButton then
     if guiSelectedButton == upButton then
-      mockMod( x,z,1, updateCallback )
+      modMock( x,z,1)
     elseif guiSelectedButton == downButton then
-      mockMod( x,z,-1, updateCallback )
+      modMock( x,z,-1)
     elseif guiSelectedButton == clearButton then
-      mockClear(x,z, updateCallback )
+      clearMock(x,z)
     elseif guiSelectedButton == flatButton then
       flatButton.heightToSet = getFieldMockHeight(x,z)
     end
     clkSound:play()
   end
   
-  updateAllChunks()
   cursorProp:setAtGrid( true, x,z )
 end
 
@@ -857,11 +866,18 @@ th:run(function()
       
       -- network
       if conn then
+        local onePollTimeout = 0.02
+        conn.pollStartAt = t
         conn:poll()
-        conn:pollMessage( function()
-            return true
+        local ret = conn:pollMessage( function()
+            local nt = MOAISim.getDeviceTime()
+            if  nt < ( conn.pollStartAt + onePollTimeout ) then
+              return true
+            else
+              return false
+            end
           end)
-        
+        assert(ret)
       end
 
       prevTime = t
