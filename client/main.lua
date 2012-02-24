@@ -200,13 +200,18 @@ function makeHMProp(vx,vz)
   function p:poll()
     if self.state == "init" then
       if conn then
---        print("load rect:", self.state, self.vx, self.vz )      
-        conn:emit("getFieldRect", {
-            x1 = self.vx,
-            z1 = self.vz,
-            x2 = self.vx + CHUNKSZ + 1,
-            z2 =  self.vz + CHUNKSZ + 1 } )
-        self.state = "loading"
+        local x,y,z = self:getLoc() 
+        local winx1,winy1 = fieldLayer:worldToWnd(x,y,z)
+        local winx2,winy2 = fieldLayer:worldToWnd(x+CELLUNITSZ*CHUNKSZ,y,z+CELLUNITSZ*CHUNKSZ)
+        if winx2 >= 0 and winy2 >= 0 and winx1 <= SCRW and winy1 <= SCRH then
+          print("load rect:", self.state, self.vx, self.vz )      
+          conn:emit("getFieldRect", {
+              x1 = self.vx,
+              z1 = self.vz,
+              x2 = self.vx + CHUNKSZ + 1,
+              z2 =  self.vz + CHUNKSZ + 1 } )
+          self.state = "loading"
+        end          
       end
     end
   end
@@ -414,8 +419,12 @@ function onKeyboardEvent(k,dn)
       end      
     else
       if k == 108 then --l
-        print("sssssss:", statBox:getStringBounds( 1,9999))
+        for i,v in ipairs(chunks) do
+          print("sssssss:", fieldLayer:worldToWnd( v:getLoc() ) )
+        end
+        
       end
+
     end
   end
 
