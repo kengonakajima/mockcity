@@ -192,10 +192,7 @@ function makeHMProp(vx,vz)
             z2 =  self.vz + CHUNKSZ + 1 } )
         self.state = "loading"
       end
-      
     end
-    
-      
   end
 
   p.state = "init"
@@ -372,7 +369,7 @@ end
 
 function modMock(x,z,dh)
   if conn then
-    conn:emit("modifyMock", { x=x,z=z,mod=dh } )
+    conn:emit("modifyMock", { x=x,z=z,mod=dh,unit=CHUNKSZ } )
   end  
 end
 
@@ -509,7 +506,14 @@ function onMouseLeftEvent(down)
     elseif guiSelectedButton == downButton then
       modMock( x,z,-1)
     elseif guiSelectedButton == clearButton then
-      clearMock(x,z)
+      local realh, mockh = getFieldHeight(x,z), getFieldMockHeight(x,z)
+      local modH = 0
+      if realh > mockh then
+        modH = 1
+      elseif realh < mockh then
+        modH = -1
+      end
+      if modH ~= 0 then modMock(x,z,modH) end
     elseif guiSelectedButton == flatButton then
       flatButton.heightToSet = getFieldMockHeight(x,z)
     end
@@ -722,7 +726,8 @@ conn:on("complete", function()
         local ch = getChunk(arg.x1,arg.z1)
         assert(ch)
         ch:setData( arg.tdata, arg.hdata, arg.mhdata )
-        ch:updateHeightMap(false) -- editmode
+        ch:updateHeightMap(ch.editMode)
+        ch.state = "loaded"
 
       end)
   end)
@@ -866,7 +871,7 @@ th:run(function()
       
       -- network
       if conn then
-        local onePollTimeout = 0.02
+        local onePollTimeout = 0.01
         conn.pollStartAt = t
         conn:poll()
         local ret = conn:pollMessage( function()
