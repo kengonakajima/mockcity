@@ -29,7 +29,7 @@ rpc = mprpc.create(net,msgpack)
 SCRW, SCRH = 960, 640
 
 ZOOM_MINY = 500
-ZOOM_MAXY = 30000
+ZOOM_MAXY = 5000000
 
 CURSOR_MAXY = 3000
 
@@ -317,7 +317,7 @@ function initZoomSlider()
 
   zoomTable={}
   for i=1,128 do
-    local yy = ZOOM_MINY * math.pow( 2, i / 16.0 )
+    local yy = ZOOM_MINY * math.pow( 2, i / 10.0 )
     if yy < ZOOM_MINY then yy = ZOOM_MINY end
     if yy > ZOOM_MAXY then yy = ZOOM_MAXY end    
     zoomTable[i] = yy
@@ -651,7 +651,7 @@ end
 -- cam
 camera = MOAICamera3D.new ()
 local z = camera:getFocalLength ( SCRW )
-camera:setFarPlane(100000)
+camera:setFarPlane( ZOOM_MAXY*2 )
 camera:setLoc ( 0, ZOOM_MINY, 800 )
 fieldLayer:setCamera ( camera )
 cursorLayer:setCamera ( camera )
@@ -715,8 +715,10 @@ initButtons()
 initZoomSlider()
 
 
-appendLog( "asdf")
-appendLog( "aksdjfalsdkfjka")
+appendLog( "Welcome to MockCity.")
+appendLog( "WASD key to move camera" )
+appendLog( "ENTER to start chat")
+appendLog( "/nick NAME to set your nickname" )
 
 -- network
 
