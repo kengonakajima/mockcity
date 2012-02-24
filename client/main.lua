@@ -7,7 +7,7 @@
 require "./const"
 require "./util"
 require "./mesh"
-require "./field"
+
 require "./textbox"
 require "./gui"
 require "./config" 
@@ -33,6 +33,7 @@ ZOOM_MAXY = 30000
 
 CURSOR_MAXY = 3000
 
+CHUNKSZ = 16
 
 math.randomseed(1)
 
@@ -47,6 +48,12 @@ fieldLayer = MOAILayer.new()
 fieldLayer:setViewport(viewport)
 fieldLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
 MOAISim.pushRenderPass(fieldLayer)
+
+cursorLayer = MOAILayer.new()
+cursorLayer:setViewport(viewport)
+cursorLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
+MOAISim.pushRenderPass(cursorLayer)
+
 
 hudLayer = MOAILayer2D.new()
 hudLayer:setViewport(viewport)
@@ -69,63 +76,102 @@ cursorDeck = loadGfxQuad( "./images/cursor.png" )
 
 
 
-xpcall(function()
-    fld = Field(256,256)
-    fld:generate()
-    print("generated")
-  end, errorHandler)
 
-CHUNKSZ = 16
 CELLUNITSZ = 32
 
 MOCKEPSILON = 2
 -- vx,vy : starts from zero, grid coord.
 function makeHMProp(vx,vz)
   local p = MOAIProp.new()
-  function p:updateHeightMap(vertx,vertz,editmode)
---    print("updateHeightMap: editmode:", vertx, vertz, editmode )
+
+  function p:setData( tdata, hdata, mhdata )
+    local tot=0
+    for i,v in ipairs(hdata) do tot = tot + v end
+--    print("hm:setData:", #tdata, #hdata, #mhdata, tot )
+    local nElem = ( CHUNKSZ+1 ) * (CHUNKSZ+1) -- rightside and bottomsize require 1 more vertices
+    assert( #tdata == nElem )
+    assert( #hdata == nElem )
+    assert( #mhdata == nElem )
+
+    self.tdata, self.hdata, self.mhdata  = dupArray(tdata), dupArray(hdata), dupArray(mhdata)
+    self.reddata = {}
+    
+    local nmock = 0
+
+    for i =1,#tdata do
+      local h, mockh = self.hdata[i], self.mhdata[i]
+      if mockh < h then
+        nmock = nmock + 1
+        self.reddata[i] = true
+--        if (outi-1)>=1 then outred[outi - 1] = true end -- left
+--        if (outi-w) >= 1 then outred[outi-w] = true end -- up
+--        if (outi-w-1) >= 1 then outred[outi-w-1] = true end -- left up
+      elseif mockh > h then
+        nmock = nmock + 1
+      end
+    end
+    self.validMockNum = nmock
+  end
+    
+  function p:updateHeightMap(editmode)
     local lightRate = 1
     if editmode then lightRate = 0.5 end
-    local hdata, tdata, mockdata, reddata = fld:getRect( vertx, vertz, CHUNKSZ+1, CHUNKSZ+1 )
-    local showhdata ={}
-    if editmode and mockdata then
-      showhdata = dupArray(mockdata)
-      reddata = nil
-    else
-      showhdata = dupArray(hdata)
+
+    local showhdata, showreddata = self.hdata, self.reddata
+    if editmode then
+      showhdata = self.mhdata
+      showreddata = nil
     end
+
+--    for i,v in ipairs(showhdata) do
+--      if showhdata[i] ~= self.mhdata[i] then
+--        print( "iii:",i,v, showhdata[i], self.mhdata[i])
+--      end      
+--    end
     
-    local hm = makeHeightMapMesh(CELLUNITSZ, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata,tdata, reddata, false )    
+    local hm = makeHeightMapMesh(CELLUNITSZ, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false )    
     self:setDeck(hm)
     
-    if not editmode and mockdata then
+    if not editmode and self.validMockNum > 0 then
       if not self.mockp then 
         self.mockp = MOAIProp.new()
         fieldLayer:insertProp(self.mockp)
-        self.mockp:setLoc( vertx * CELLUNITSZ, 0 - MOCKEPSILON, vertz * CELLUNITSZ )        
+        self.mockp:setLoc( self.vx * CELLUNITSZ, 0 - MOCKEPSILON, self.vz* CELLUNITSZ )        
       end
       
       -- show high places
---      for i,v in ipairs(mockdata) do
---        if v ~= showhdata[i] then print("diff:",i,mockdata[i] ) end
---      end
       
-      local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, mockdata, tdata, nil, true )
+      local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, nil, true )
       self.mockp:setDeck(mockmesh )
       self.mockp:setColor(1,1,1,1)
       self.mockp:setCullMode( MOAIProp.CULL_BACK )
       self.mockp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
-
---      print("init mockprop. ",vertx, vertz )
     else
       if self.mockp then self.mockp:setDeck(nil) end
-    end    
+    end
+    self:setLoc( self:getLoc() )
+  end
+
+  function p:dataIndex(modx,modz)
+    return modx + modz * ( CHUNKSZ + 1 ) + 1    
   end
   
-  function p:toggleEditMode(mode)    
-    self:updateHeightMap( self.vx, self.vz, mode )
+  function p:getHeight(worldx,worldz)
+    if not self.hdata then return nil end
+    local modx,modz = worldx % CHUNKSZ, worldz % CHUNKSZ
+    return self.hdata[ self:dataIndex(modx,modz)]
+  end
+  function p:getMockHeight(worldx,worldz)
+    if not self.mhdata then return nil end
+    local modx,modz = worldx % CHUNKSZ, worldz % CHUNKSZ
+    return self.mhdata[ self:dataIndex(modx,modz)]
+  end
+      
+  function p:toggleEditMode(mode)
+    print("toggleEditMode:",self.vx, self.vz, mode)
+    self:updateHeightMap( mode )
     self.editMode = mode
-    moveWorld(0,0)
+    self:setLoc( self:getLoc() )
   end
   local origsetloc = p.setLoc
   function p:setLoc(x,y,z)
@@ -135,12 +181,32 @@ function makeHMProp(vx,vz)
     origsetloc(self,x,y,z)
   end
 
+  function p:poll()
+    if self.state == "init" then
+      if conn then
+        print("load rect:", self.state, self.vx, self.vz )      
+        conn:emit("getFieldRect", {
+            x1 = self.vx,
+            z1 = self.vz,
+            x2 = self.vx + CHUNKSZ + 1,
+            z2 =  self.vz + CHUNKSZ + 1 } )
+        self.state = "loading"
+      end
+      
+    end
+    
+      
+  end
+
+  p.state = "init"
   p.vx, p.vz = vx,vz
-  p:updateHeightMap(vx,vz,false)
+
   p:setCullMode( MOAIProp.CULL_BACK )
   p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
   local x,z = vx * CELLUNITSZ,  vz * CELLUNITSZ 
   p:setLoc(x, 0, z )
+
+  fieldLayer:insertProp(p)
   return p
 end
 
@@ -153,12 +219,13 @@ function makeCursor()
 --  p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
   function p:setAtGrid(editmode, x,z)
     local xx,zz = x * CELLUNITSZ, z * CELLUNITSZ
-    local tgt = fld.heights
-    if editmode then tgt = fld.mockHeights end
-    local h = fld:targetGet( tgt, x,z )
-    local yy = h * CELLUNITSZ
-    self:setLoc(xx + scrollX,yy + CELLUNITSZ/2 - 5, zz + scrollZ)
-    self.lastGridX, self.lastGridZ = x,z
+    local h = getFieldHeight(x,z)
+    if editmode then h = getFieldMockHeight(x,z) end
+    if h then
+      local yy = h * CELLUNITSZ
+      self:setLoc(xx + scrollX,yy + CELLUNITSZ/2 - 5, zz + scrollZ)
+      self.lastGridX, self.lastGridZ = x,z
+    end    
   end 
   return p
 end
@@ -224,8 +291,7 @@ function initZoomSlider()
   local x,y = baseX, baseY
 
   zoomInButton = makeButton( "zoomIn", x,y, guiDeck, 17, byte("k"), function(self,x,y,down)
-      print("zin")
-      camera:retargetYrate( 0.5 )
+      if down then camera:retargetYrate( 0.5 ) end
     end)
   zoomInButton.flippable = false
 
@@ -255,7 +321,7 @@ function initZoomSlider()
   end
   y = y - BUTTONSIZE
   zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("j"), function(self,x,y,down)
-      camera:retargetYrate( 2 )
+      if down then camera:retargetYrate( 2 ) end
     end)
   zoomOutButton.flippable = false
 
@@ -344,7 +410,7 @@ function onMouseLeftDrag(mousex,mousey)
   local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
   local modH = 0
   if guiSelectedButton == flatButton then
-    local h = fld:targetGet( fld.mockHeights, x,z )
+    local h = getFieldMockHeight(x,z)
     local dh = h - flatButton.heightToSet
     if dh == 0 then
       modH = 0
@@ -358,8 +424,7 @@ function onMouseLeftDrag(mousex,mousey)
   elseif guiSelectedButton == downButton then
     modH = -1
   elseif guiSelectedButton == clearButton then
-    local realh = fld:get(x,z)
-    local mockh = fld:targetGet(fld.mockHeights,x,z)
+    local realh, mockh = getFieldHeight(x,z), getFieldMockHeight(x,z)
     if realh > mockh then
       modH = 1
     elseif realh < mockh then
@@ -367,7 +432,7 @@ function onMouseLeftDrag(mousex,mousey)
     end      
   end
   if modH ~= 0 then
-    fld:mockMod(x,z,modH,updateCallback)
+    mockMod(x,z,modH,updateCallback)
     clkSound:play()
     updateAllChunks()
   end  
@@ -430,13 +495,13 @@ function onMouseLeftEvent(down)
 
   if guiSelectedButton then
     if guiSelectedButton == upButton then
-      fld:mockMod( x,z,1, updateCallback )
+      mockMod( x,z,1, updateCallback )
     elseif guiSelectedButton == downButton then
-      fld:mockMod( x,z,-1, updateCallback )
+      mockMod( x,z,-1, updateCallback )
     elseif guiSelectedButton == clearButton then
-      fld:mockClear(x,z, updateCallback )
+      mockClear(x,z, updateCallback )
     elseif guiSelectedButton == flatButton then
-      flatButton.heightToSet = fld:targetGet( fld.mockHeights, x,z)
+      flatButton.heightToSet = getFieldMockHeight(x,z)
     end
     clkSound:play()
   end
@@ -448,20 +513,6 @@ end
 MOAIInputMgr.device.mouseLeft:setCallback( onMouseLeftEvent )
 
 
-
----------------------------
-
----------------------------
-
-function updateChunk(chx,chz)
-  local p = makeHMProp(chx*CHUNKSZ,chz*CHUNKSZ)
-
-  fieldLayer:insertProp(p)
-  p.chx, p.chz = chx, chz
-  table.insert(chunks,p)
-  return p
-end
-
 function clearAllEditModeChunks()
   for i,chk in ipairs(chunks) do
     if chk.editMode then
@@ -470,21 +521,34 @@ function clearAllEditModeChunks()
   end
 end
 
-
+function chunkIndex(chx,chz)
+  return ( chz * CHUNKRANGE + chx ) + 1
+end
+function getChunk(gridx,gridz)
+  local chx,chz = int(gridx/CHUNKSZ), int(gridz/CHUNKSZ)
+  return chunks[ chunkIndex(chx,chz) ]
+end
 
 chunks={}
 CHUNKRANGE = 16
-for chz=0,CHUNKRANGE-1 do
-  for chx=0,CHUNKRANGE-1 do
-    updateChunk(chx,chz)
+function pollChunks()
+  for chz=0,CHUNKRANGE-1 do
+    for chx=0,CHUNKRANGE-1 do
+      local chind = chunkIndex( chx,chz )
+      if not chunks[chind] then
+        chunks[chind] = makeHMProp(chx * CHUNKSZ,chz * CHUNKSZ)
+      else
+        chunks[chind]:poll()
+      end
+    end
   end
 end
 
 function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
-  for i,v in ipairs(chunks) do
-    if v.chx >= chx1 and v.chx <= chx2 and v.chz >= chz1 and v.chz <= chz2 then
-      if cb then
-        cb(v)
+  for chx = chx1,chx2 do
+    for chz = chz1,chz2 do
+      local ch = getChunk( chx*CHUNKSZ, chz*CHUNKSZ )
+      if ch then cb(ch)
       end
     end
   end
@@ -499,6 +563,52 @@ function setEditModeAroundCursor(ctlx,ctlz,mode)
     end)
 end
 
+-- return 4 verts from LT
+function getHeights4(f, x,z)    
+  local ah = f(x,z) or 0
+  local bh = f(x+1,z) or 0
+  local ch = f(x+1,z+1) or 0
+  local dh = f(x,z+1) or 0
+  return { leftTop=ah, rightTop=bh, rightBottom=ch, leftBottom=dh }    
+end  
+
+
+function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
+
+  local tgt = getFieldHeight
+  if editmode then tgt = getFieldMockHeight end
+    
+  local x,y,z = camx,camy,camz
+  local camvec, dirvec = vec3(camx,camy,camz), vec3(dirx,diry,dirz)
+  local loopN = camy / CELLUNITSZ
+  local previx,previz
+  
+  for i=1,loopN*2 do
+    x,y,z = x + dirx * CELLUNITSZ, y + diry * CELLUNITSZ, z + dirz * CELLUNITSZ
+    local ix, iz = int(x/CELLUNITSZ), int(z/CELLUNITSZ)
+    if ix ~= previx or iz ~= previz then
+      local h4s = getHeights4( tgt, ix,iz)
+
+      --  print("diffed.",ix,iz, h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom )
+      local ltY,rtY,rbY,lbY = h4s.leftTop * CELLUNITSZ, h4s.rightTop * CELLUNITSZ, h4s.rightBottom * CELLUNITSZ, h4s.leftBottom * CELLUNITSZ
+      local ltX,ltZ = ix*CELLUNITSZ, iz*CELLUNITSZ
+      local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rtY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ))
+      if t then
+--        print("HIT TRIANGLE RIGHT-UP. x,z:", ix,iz)
+        return ix,iz
+      end
+      t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ), vec3(ltX,lbY,ltZ+CELLUNITSZ))
+      if t then
+--        print("HIT TRIANGLE LEFT-DOWN. x,z:",ix,iz)
+        return ix,iz
+      end
+    end      
+    previx,previz = ix,iz
+    if y < 0 then break end
+  end
+  return nil
+end
+
 ---------------------------
 
 -- cam
@@ -507,20 +617,22 @@ local z = camera:getFocalLength ( SCRW )
 camera:setFarPlane(100000)
 camera:setLoc ( 0, ZOOM_MINY, 800 )
 fieldLayer:setCamera ( camera )
+cursorLayer:setCamera ( camera )
 
 function camera:retargetYrate(yrate)
   local cx,cy,cz = camera:getLoc()
   local toY = cy * yrate
   camera:retargetY(toY)
 end
-function camera:retargetY(toY)
+function camera:retargetY(toY)  
+  local cx,cy,cz = self:getLoc()
   if toY < ZOOM_MINY then
     toY = ZOOM_MINY
   elseif toY > ZOOM_MAXY then
     toY = ZOOM_MAXY
   end
-  print("toY:",toY)
   cz = toY * 0.4
+  print("xxxx:", cx)
   camera:setLoc(cx,toY,cz)
   if zoomSliderTab then zoomSliderTab:update(camera) end
 end
@@ -542,7 +654,7 @@ camera:retargetY( ZOOM_MINY )
 
 cursorProp = makeCursor()
 cursorProp:setLoc(0,CELLUNITSZ/2,0)
-fieldLayer:insertProp(cursorProp)
+cursorLayer:insertProp(cursorProp)
 
 function disappearCursor()
   if not cursorProp then return false end
@@ -588,12 +700,34 @@ conn:on("complete", function()
     conn:on("hello", function(arg)
         print("server revision:", arg.revision )
       end)
+    conn:on("fieldConf", function(arg)
+        print("fieldConf. wh:", arg.width, arg.height )
+        fieldWidth, fieldHeight = arg.width, arg.height
+      end)
     conn:on("chatNotify", function(arg)
         print("chatNotify. text:", arg.text )
         appendLog( arg.text )
       end)
+    conn:on("getFieldRectResult", function(arg)
+--        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, #arg.hdata, #arg.tdata, #arg.mhdata )
+        local ch = getChunk(arg.x1,arg.z1)
+        assert(ch)
+        ch:setData( arg.tdata, arg.hdata, arg.mhdata )
+        ch:updateHeightMap(false) -- editmode
+
+      end)
   end)
 
+
+
+function getFieldHeight(x,z)
+  local ch = getChunk(x,z)
+  if ch then return ch:getHeight(x,z) else return nil end
+end
+function getFieldMockHeight(x,z)
+  local ch = getChunk(x,z)
+  if ch then return ch:getMockHeight(x,z) else return nil end
+end
 
 
 ----------------
@@ -607,7 +741,7 @@ function moveWorld(dx,dz)
   scrollX, scrollZ = scrollX + dx, scrollZ + dz
 end
 
-moveWorld(-20*CELLUNITSZ, -20*CELLUNITSZ)
+
 
 camera.flyUp = false
 
@@ -626,13 +760,17 @@ th:run(function()
       if lastPrintAt < t - 1 then
         lastPrintAt = t
         local x,z = lastControlX or 0, lastControlZ or 0
-        local y = fld:get(x,z)
+        local y = getFieldHeight(x,z)
+        if not y then y = 0 end
         local curmode = "PRESENT"
         if guiSelectedButton and guiSelectedButton.editMode then curmode = "FUTURE" end
         statBox:set( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. #chunks .. "  " .. curmode )
         frameCnt = 0
       end
 
+      -- update chunks
+      pollChunks()
+      
       -- cams and moves      
       local cx,cy,cz = camera:getLoc()
       local dy,dz = 0 - cy, 0 - cz -- move world. not camera, because of Moai's bug?
@@ -674,7 +812,7 @@ th:run(function()
       if keyState[13] then -- enter
       end
 
-        
+
       cz = cy * 0.4
       camera:setLoc( cx, cy, cz )
       if cy ~= prevcy and zoomSliderTab then zoomSliderTab:update(camera) end
@@ -685,14 +823,15 @@ th:run(function()
 --        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
 
         local camx,camy,camz = camera:getLoc()
+        
         local editmode = guiSelectedButton and guiSelectedButton.editMode
         
         if camy < CURSOR_MAXY then
 --          local st = os.clock()
-          local ctlx,ctlz = fld:findControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+          local ctlx,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
 --          local et = os.clock()
 --          print("t:", (et-st))
-          if ctlx and ctlz and ctlx >= 0 and ctlx < fld.width and ctlz >= 0 and ctlz < fld.height then
+          if ctlx and ctlz and ctlx >= 0 and ctlx < fieldWidth and ctlz >= 0 and ctlz < fieldHeight then
             lastControlX, lastControlZ = ctlx, ctlz
             cursorProp:setAtGrid(editmode, ctlx,ctlz)
 
