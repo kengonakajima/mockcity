@@ -76,10 +76,8 @@ cursorDeck = loadGfxQuad( "./images/cursor.png" )
 
 
 
-
 CELLUNITSZ = 32
 
-MOCKEPSILON = 1
 -- vx,vy : starts from zero, grid coord.
 function makeHMProp(vx,vz)
   local p = MOAIProp.new()
@@ -92,37 +90,42 @@ function makeHMProp(vx,vz)
     assert( #tdata == nElem )
     assert( #hdata == nElem )
     assert( #mhdata == nElem )
-
     self.tdata, self.hdata, self.mhdata  = dupArray(tdata), dupArray(hdata), dupArray(mhdata)
-    self.reddata = {}
-    
-    local nmock = 0
-
-    for i =1,#tdata do
-      local h, mockh = self.hdata[i], self.mhdata[i]
-      if mockh < h then
-        nmock = nmock + 1
-        self.reddata[i] = true
---        if (outi-1)>=1 then outred[outi - 1] = true end -- left
---        if (outi-w) >= 1 then outred[outi-w] = true end -- up
---        if (outi-w-1) >= 1 then outred[outi-w-1] = true end -- left up
-      elseif mockh > h then
-        nmock = nmock + 1
-      end
-    end
-    self.validMockNum = nmock
+    self.validMockNum = 0
+    for i =1,#tdata do if hdata[i] ~= mhdata[i] then self.validMockNum = self.validMockNum + 1 end end
   end
     
   function p:updateHeightMap(editmode)
     local lightRate = 1
     if editmode then lightRate = 0.5 end
 
-    local showhdata, showreddata = self.hdata, self.reddata
+    local showhdata = self.hdata
     if editmode then
       showhdata = self.mhdata
-      showreddata = nil
     end
 
+    local showreddata = {}
+    if not editmode then
+      for i=1,#self.hdata do showreddata[i] = false end
+      for z=0,CHUNKSZ-1 do
+        for x=0,CHUNKSZ-1 do
+          local ind = x + z*(CHUNKSZ+1) + 1
+          if self.mhdata[ind] < self.hdata[ind] then
+            showreddata[ind] = true
+            if ind - 1 >= 1 then
+              showreddata[ ind - 1 ] = true
+            end
+            if ind - (CHUNKSZ+1) >= 1 then
+              showreddata[ ind - (CHUNKSZ+1) ] = true
+            end
+            if ind - (CHUNKSZ+1) - 1 >= 1 then
+              showreddata[ ind - (CHUNKSZ+1) - 1] = true
+            end          
+          end
+        end
+      end
+    end
+    
 --    for i,v in ipairs(showhdata) do
 --      if showhdata[i] ~= self.mhdata[i] then
 --        print( "iii:",i,v, showhdata[i], self.mhdata[i])
@@ -136,12 +139,25 @@ function makeHMProp(vx,vz)
       if not self.mockp then 
         self.mockp = MOAIProp.new()
         fieldLayer:insertProp(self.mockp)
-        self.mockp:setLoc( self.vx * CELLUNITSZ, 0 - MOCKEPSILON, self.vz* CELLUNITSZ )        
+        self.mockp:setLoc( self.vx * CELLUNITSZ, 1, self.vz* CELLUNITSZ )        
       end
       
       -- show high places
+      local omitdata = {}
+      for i=1,#self.hdata do omitdata[i]=false end
+
+      for z=0,CHUNKSZ-1 do
+        for x=0,CHUNKSZ-1 do
+          local ind = x + z*(CHUNKSZ+1) + 1
+          if showreddata[ind] then
+            omitdata[ind] = true
+          elseif self.hdata[ind] == self.mhdata[ind] and self.hdata[ind+1] == self.mhdata[ind+1] and self.hdata[ind +(CHUNKSZ+1)] == self.mhdata[ind + (CHUNKSZ+1)] and self.hdata[ind + (CHUNKSZ+1)+1] == self.mhdata[ind + (CHUNKSZ+1)+1] then
+            omitdata[ind] = true
+          end
+        end
+      end
       
-      local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, nil, true )
+      local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, omitdata, true )
       self.mockp:setDeck(mockmesh )
       self.mockp:setColor(1,1,1,1)
       self.mockp:setCullMode( MOAIProp.CULL_BACK )
@@ -176,7 +192,7 @@ function makeHMProp(vx,vz)
   local origsetloc = p.setLoc
   function p:setLoc(x,y,z)
     if self.mockp then
-      self.mockp:setLoc(x,y - MOCKEPSILON,z)
+      self.mockp:setLoc(x,y+1,z)
     end    
     origsetloc(self,x,y,z)
   end
@@ -271,7 +287,6 @@ function initLogLines()
   logLines = {}
   for i = 1,maxLogLineNum do
     local x,y = baseX, baseY - i * font:getScale()
-    print("xxxx:",x,y)
     local line = makeTextBox(x,y, "" )
     table.insert( logLines, line )
   end  
@@ -645,7 +660,6 @@ function camera:retargetY(toY)
     toY = ZOOM_MAXY
   end
   cz = toY * 0.4
-  print("xxxx:", cx)
   camera:setLoc(cx,toY,cz)
   if zoomSliderTab then zoomSliderTab:update(camera) end
 end

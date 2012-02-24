@@ -86,12 +86,28 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
   local numVert = cellNum * 6
   if lineMode then
     numVert = cellNum * 4
+    if reddata then
+      for z=0,CHUNKSZ-1 do
+        for x=0,CHUNKSZ-1 do
+          local ind = x + z * (CHUNKSZ + 1) + 1
+          if reddata[ind] then numVert = numVert - 4 end
+        end
+      end
+    end    
   end
   local vb = makeVertexBuffer(numVert)
   
   local numIndex = triNum * 3
   if lineMode then
     numIndex = cellNum * 5 * 2 -- 5 lines
+    if reddata then
+      for z=0,CHUNKSZ-1 do
+        for x=0,CHUNKSZ-1 do
+          local ind = x + z * (CHUNKSZ + 1) + 1
+          if reddata[ind] then numIndex = numIndex - 5 * 2 end
+        end
+      end
+    end
   end
   
   local ib = makeIndexBuffer( numIndex )
@@ -127,39 +143,40 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
       end
 
       if lineMode then
-        -- need only 4 vert in line mode.
-        local baseVertOffset = (cellCnt-1) * 4
-        local baseU, baseV = tileIndexToUV(CELLTYPE.WHITE)
-        baseU, baseV = baseU + DECKSTEP/2, baseV + DECKSTEP/2
-        vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, 1,1,1 ) -- A
-        vb:pushVert( basex + sz, rightTopHeight, basez,  baseU,baseV, 1,1,1 ) -- B
-        vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,1,1 )  -- C
-        vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,1,1 ) -- D
-        -- A-B
-        ib:setIndex( indexCnt, 1 + baseVertOffset )
-        ib:setIndex( indexCnt+1, 2 + baseVertOffset )
-        -- B-C
-        ib:setIndex( indexCnt+2, 2 + baseVertOffset )
-        ib:setIndex( indexCnt+3, 3 + baseVertOffset )
-        if normalDiv then
-          -- C-A
-          ib:setIndex( indexCnt+4, 3 + baseVertOffset )
-          ib:setIndex( indexCnt+5, 1 + baseVertOffset )
-        else
-          -- D-B
-          ib:setIndex( indexCnt+4, 2 + baseVertOffset )
-          ib:setIndex( indexCnt+5, 4 + baseVertOffset )          
-        end        
-        -- A-D
-        ib:setIndex( indexCnt+6, 1 + baseVertOffset )
-        ib:setIndex( indexCnt+7, 4 + baseVertOffset )
-        -- D-C
-        ib:setIndex( indexCnt+8, 4 + baseVertOffset )
-        ib:setIndex( indexCnt+9, 3 + baseVertOffset )
-          
+        if not toRed then
+          -- need only 4 vert in line mode.
+          local baseVertOffset = (cellCnt-1) * 4
+          local baseU, baseV = tileIndexToUV(CELLTYPE.WHITE)
+          baseU, baseV = baseU + DECKSTEP/2, baseV + DECKSTEP/2
+          vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, 1,1,1 ) -- A
+          vb:pushVert( basex + sz, rightTopHeight, basez,  baseU,baseV, 1,1,1 ) -- B
+          vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,1,1 )  -- C
+          vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,1,1 ) -- D
+          -- A-B
+          ib:setIndex( indexCnt, 1 + baseVertOffset )
+          ib:setIndex( indexCnt+1, 2 + baseVertOffset )
+          -- B-C
+          ib:setIndex( indexCnt+2, 2 + baseVertOffset )
+          ib:setIndex( indexCnt+3, 3 + baseVertOffset )
+          if normalDiv then
+            -- C-A
+            ib:setIndex( indexCnt+4, 3 + baseVertOffset )
+            ib:setIndex( indexCnt+5, 1 + baseVertOffset )
+          else
+            -- D-B
+            ib:setIndex( indexCnt+4, 2 + baseVertOffset )
+            ib:setIndex( indexCnt+5, 4 + baseVertOffset )          
+          end        
+          -- A-D
+          ib:setIndex( indexCnt+6, 1 + baseVertOffset )
+          ib:setIndex( indexCnt+7, 4 + baseVertOffset )
+          -- D-C
+          ib:setIndex( indexCnt+8, 4 + baseVertOffset )
+          ib:setIndex( indexCnt+9, 3 + baseVertOffset )
 
-        
-        indexCnt = indexCnt + 10
+          indexCnt = indexCnt + 10
+          cellCnt = cellCnt + 1
+        end        
       else
 
         local baseU, baseV = tileIndexToUV( tdata[fieldVertInd] )
@@ -247,8 +264,8 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
         ib:setIndex( indexCnt+5, 2 + baseVertOffset )
 
         indexCnt = indexCnt + 6
-      end
-      cellCnt = cellCnt + 1
+        cellCnt = cellCnt + 1
+      end      
     end
   end
   vb:bless()
