@@ -34,6 +34,11 @@ ZOOM_MAXY = 5000000
 CURSOR_MAXY = 3000
 
 CHUNKSZ = 16
+CELLUNITSZ = 32
+
+
+-----------------
+
 
 math.randomseed(1)
 
@@ -73,15 +78,15 @@ baseDeck = loadTex( "./images/citybase.png" )
 cursorDeck = loadGfxQuad( "./images/cursor.png" )
 
 
+scrollX, scrollZ = 0,0
 
-
-
-CELLUNITSZ = 32
 
 -- vx,vy : starts from zero, grid coord.
-function makeHMProp(vx,vz)
+-- zoomlevel : 1,2,4,8, ..
+function makeHMProp(vx,vz,zoomlevel)
   local p = MOAIProp.new()
 
+  p.zoomLevel = zoomlevel
   function p:setData( tdata, hdata, mhdata )
     local tot=0
     for i,v in ipairs(hdata) do tot = tot + v end
@@ -139,7 +144,7 @@ function makeHMProp(vx,vz)
       if not self.mockp then 
         self.mockp = MOAIProp.new()
         fieldLayer:insertProp(self.mockp)
-        self.mockp:setLoc( self.vx * CELLUNITSZ, 1, self.vz* CELLUNITSZ )        
+        self.mockp:setLoc( self.vx * CELLUNITSZ*zoomlevel, 1, self.vz* CELLUNITSZ *zoomlevel )        
       end
       
       -- show high places
@@ -197,21 +202,23 @@ function makeHMProp(vx,vz)
     origsetloc(self,x,y,z)
   end
 
+  function p:inWindow()
+    local x,y,z = self:getLoc() 
+    local winx1,winy1 = fieldLayer:worldToWnd(x,y,z)
+    local winx2,winy2 = fieldLayer:worldToWnd(x+CELLUNITSZ*CHUNKSZ*self.zoomLevel, y, z+CELLUNITSZ*CHUNKSZ+self.zoomLevel )
+    return (  winx2 >= 0 and winy2 >= 0 and winx1 <= SCRW and winy1 <= SCRH )
+  end
+          
   function p:poll()
     if self.state == "init" then
-      if conn then
-        local x,y,z = self:getLoc() 
-        local winx1,winy1 = fieldLayer:worldToWnd(x,y,z)
-        local winx2,winy2 = fieldLayer:worldToWnd(x+CELLUNITSZ*CHUNKSZ,y,z+CELLUNITSZ*CHUNKSZ)
-        if winx2 >= 0 and winy2 >= 0 and winx1 <= SCRW and winy1 <= SCRH then
-          print("load rect:", self.state, self.vx, self.vz )      
-          conn:emit("getFieldRect", {
-              x1 = self.vx,
-              z1 = self.vz,
-              x2 = self.vx + CHUNKSZ + 1,
-              z2 =  self.vz + CHUNKSZ + 1 } )
+      if conn and self:inWindow() then
+        print("load rect:", self.state, self.vx, self.vz )      
+        conn:emit("getFieldRect", {
+            x1 = self.vx,
+            z1 = self.vz,
+            x2 = self.vx + CHUNKSZ + 1,
+            z2 =  self.vz + CHUNKSZ + 1 } )
           self.state = "loading"
-        end          
       end
     end
   end
@@ -221,8 +228,7 @@ function makeHMProp(vx,vz)
 
   p:setCullMode( MOAIProp.CULL_BACK )
   p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
-  local x,z = vx * CELLUNITSZ,  vz * CELLUNITSZ 
-  p:setLoc(x, 0, z )
+  p:setLoc(vx*CELLUNITSZ*zoomlevel, 0, vz*CELLUNITSZ*zoomlevel )
 
   fieldLayer:insertProp(p)
   return p
@@ -549,44 +555,155 @@ end
 
 MOAIInputMgr.device.mouseLeft:setCallback( onMouseLeftEvent )
 
+----------------
+-- chunk table
+function ChunkTable(absW,absH)
+  local ct = {
+    absWidth = absW,
+    absHeight = absH
+  }
+  ct.list = {} 
+  ct.zoomary = {}  -- array of arrays of chunks. ch = [zoomlevel][x + z*w]
+  local zoomlevels = { 1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384 }
+  for i,v in ipairs(zoomlevels) do
+    ct.zoomary[v] = {}
+  end
+  
+  -- zoomlevel: 1,2,4,8,16,...
+  function ct:ind(zoomlevel, chx,chz)
+    local chunksz = CHUNKSZ * zoomlevel
+    local numHorizontalChunk = self.absWidth / chunksz
+    local numVerticalChunk = self.absHeight / chunksz
+    if chx < 0 or chz < 0 or chx >= numHorizontalChunk or chz >= numVerticalChunk then
+      return nil
+    end    
+    return (chx + chz * numHorizontalChunk)+1    
+  end
+  
+  function ct:setChunk(zoomlevel, chx,chz, ch)
+    local t = self.zoomary[zoomlevel]
+    assert(t)
+    local i = self:ind(zoomlevel, chx,chz )
+    if t[i] then
+      local r = self:clearList(t[i])
+      assert(r)
+    end    
+    t[i] = ch
+    table.insert( self.list, ch )
+  end
+  function ct:getChunk(zoomlevel, chx,chz)
+    local i = self:ind(zoomlevel,chx,chz)
+    local t = self.zoomary[zoomlevel]
+    assert(t)
+    return t[i]
+  end
+  
+  function ct:getGrid(zoomlevel, gridx,gridz)
+    local chx,chz = int(gridx/CHUNKSZ/zoomlevel), int(gridz/CHUNKSZ/zoomlevel)
+    local i = self:ind(zoomlevel,chx,chz)
+    local t = self.zoomary[zoomlevel]
+    assert(t)
+    return t[i]
+  end  
+  function ct:remove(zoomlevel, chx,chz )
+    local t = self.zoomary[zoomlevel]
+    assert(t)
+    local i = self:ind(zoomlevel, chx,chz)
+    self:clearList(t[i])
+    t[i] = nil
+  end    
+  function ct:clearList(ch)
+    assert(ch)
+    for i,v in ipairs( self.list ) do
+      if v == ch then
+        table.remove( self.list, i )
+        return true
+      end
+    end
+    return false
+  end  
+  function ct:scanAll(cb)
+    for i,ch in ipairs( self.list) do
+      cb(ch)
+    end    
+  end
+  function ct:numList()
+    return #self.list
+  end  
+  return ct
+end
+
 
 function clearAllEditModeChunks()
-  for i,chk in ipairs(chunks) do
-    if chk.editMode then
-      chk:toggleEditMode(false)
-    end
-  end
+  chunkTable:scanAll( function(chk)
+      if chk.editMode then
+        chk:toggleEditMode(false)
+      end
+    end)
 end
 
-function chunkIndex(chx,chz)
-  return ( chz * CHUNKRANGE + chx ) + 1
-end
-function getChunk(gridx,gridz)
-  local chx,chz = int(gridx/CHUNKSZ), int(gridz/CHUNKSZ)
-  return chunks[ chunkIndex(chx,chz) ]
-end
 
-chunks={}
-CHUNKRANGE = 16
-function pollChunks()
-  for chz=0,CHUNKRANGE-1 do
-    for chx=0,CHUNKRANGE-1 do
-      local chind = chunkIndex( chx,chz )
-      if not chunks[chind] then
-        chunks[chind] = makeHMProp(chx * CHUNKSZ,chz * CHUNKSZ)
-      else
-        chunks[chind]:poll()
+function pollChunks(zoomlevel, centerx, centerz )
+  if not chunkTable then return end
+  print("pollChunks")  
+  local r = 8
+  local centerChunkX, centerChunkZ = int(centerx/CELLUNITSZ/CHUNKSZ/zoomlevel), int(centerz/CELLUNITSZ/CHUNKSZ/zoomlevel)
+  for dchz=-r,r do
+    for dchx=-r,r do
+      local chx,chz = centerChunkX + dchx, centerChunkZ + dchz 
+      if chunkTable:ind(zoomlevel, chx, chz ) then
+        local ch = chunkTable:getChunk(zoomlevel, chx,chz )
+        if not ch then
+          -- check center of the chunk
+          local gridx,gridz = chx * CHUNKSZ * zoomlevel, chz * CHUNKSZ * zoomlevel
+--          local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ
+          local x,y,z = gridx * CELLUNITSZ + scrollX, 0, gridz * CELLUNITSZ + scrollZ
+          local wx1,wy1 = fieldLayer:worldToWnd(x,y,z)
+          local wx2,wy2 = fieldLayer:worldToWnd(x + CHUNKSZ*CELLUNITSZ*zoomlevel,y,z+CHUNKSZ*CELLUNITSZ*zoomlevel)
+--          print("aaa:",wx1,wy1,wx2,wy2)
+          if wx2>0 and wy2>0 and wx1<SCRW and wy1<SCRH then
+            ch = makeHMProp(gridx,gridz,zoomlevel)
+            chunkTable:setChunk( zoomlevel, chx,chz, ch )
+            print("pollChunks: alloc chk:", chx, chz, gridx,gridz, ch )
+          end          
+        end
       end
     end
   end
+  local outed = 0
+  chunkTable:scanAll( function(ch)
+      if not ch:inWindow() then
+        outed = outed + 1
+      end
+      ch:poll()
+    end)
+  print("outed:",outed)
+
+end
+
+function getFieldHeight(x,z)
+  local ch = chunkTable:getGrid(1,x,z)
+  if ch then return ch:getHeight(x,z) else return nil end
+end
+function getFieldMockHeight(x,z)
+  local ch = chunkTable:getGrid(1,x,z)
+  if ch then return ch:getMockHeight(x,z) else return nil end
+end
+
+function moveWorld(dx,dz)
+  scrollX, scrollZ = scrollX + dx, scrollZ + dz
+  
+  chunkTable:scanAll( function(ch)
+      ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
+    end)
+
 end
 
 function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
   for chx = chx1,chx2 do
     for chz = chz1,chz2 do
-      local ch = getChunk( chx*CHUNKSZ, chz*CHUNKSZ )
-      if ch then cb(ch)
-      end
+      local ch = chunkTable:get( 1, chx*CHUNKSZ, chz*CHUNKSZ )
+      if ch then cb(ch) end
     end
   end
 end
@@ -653,6 +770,8 @@ camera = MOAICamera3D.new ()
 local z = camera:getFocalLength ( SCRW )
 camera:setFarPlane( ZOOM_MAXY*2 )
 camera:setLoc ( 0, ZOOM_MINY, 800 )
+camera.flyUp = false
+
 fieldLayer:setCamera ( camera )
 cursorLayer:setCamera ( camera )
 
@@ -740,7 +859,7 @@ conn:on("complete", function()
       end)
     conn:on("fieldConf", function(arg)
         print("fieldConf. wh:", arg.width, arg.height )
-        fieldWidth, fieldHeight = arg.width, arg.height
+        chunkTable = ChunkTable(arg.width, arg.height)
       end)
     conn:on("chatNotify", function(arg)
         print("chatNotify. text:", arg.text )
@@ -748,7 +867,7 @@ conn:on("complete", function()
       end)
     conn:on("getFieldRectResult", function(arg)
 --        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, #arg.hdata, #arg.tdata, #arg.mhdata )
-        local ch = getChunk(arg.x1,arg.z1)
+        local ch = chunkTable:getGrid(1, arg.x1,arg.z1)
         assert(ch)
         ch:setData( arg.tdata, arg.hdata, arg.mhdata )
         ch:updateHeightMap(ch.editMode)
@@ -759,30 +878,8 @@ conn:on("complete", function()
 
 
 
-function getFieldHeight(x,z)
-  local ch = getChunk(x,z)
-  if ch then return ch:getHeight(x,z) else return nil end
-end
-function getFieldMockHeight(x,z)
-  local ch = getChunk(x,z)
-  if ch then return ch:getMockHeight(x,z) else return nil end
-end
 
-
-----------------
-scrollX, scrollZ = 0,0
-function moveWorld(dx,dz)
-  for i,p in ipairs(chunks) do
-    local x,y,z = p:getLoc()
-    x,z = x+dx, z+dz
-    p:setLoc(x,y,z)
-  end
-  scrollX, scrollZ = scrollX + dx, scrollZ + dz
-end
-
-
-
-camera.flyUp = false
+---------------------
 
 
 th = MOAICoroutine.new()
@@ -799,16 +896,21 @@ th:run(function()
       if lastPrintAt < t - 1 then
         lastPrintAt = t
         local x,z = lastControlX or 0, lastControlZ or 0
-        local y = getFieldHeight(x,z)
+        local y = nil
+        if chunkTable then y = getFieldHeight(x,z) end
         if not y then y = 0 end
         local curmode = "PRESENT"
         if guiSelectedButton and guiSelectedButton.editMode then curmode = "FUTURE" end
-        statBox:set( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. #chunks .. "  " .. curmode )
+        local camx,camy,camz = camera:getLoc()
+        local chknum = 0
+        if chunkTable then chknum = chunkTable:numList() end
+--        statBox:set( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. chknum .. " cam:" .. camy .. "  " .. curmode )
+        statBox:set( string.format("fps:%d cur:%d,%d,%d cam:%d scr:%d,%d chk:%d %s",frameCnt,x,y,z,camy, scrollX,scrollZ, chknum, curmode))
         frameCnt = 0
       end
 
-      -- update chunks
-      pollChunks()
+      -- alloc/clean/update chunks
+      pollChunks(1,-scrollX, -scrollZ)
       
       -- cams and moves      
       local cx,cy,cz = camera:getLoc()
@@ -870,7 +972,7 @@ th:run(function()
           local ctlx,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
 --          local et = os.clock()
 --          print("t:", (et-st))
-          if ctlx and ctlz and ctlx >= 0 and ctlx < fieldWidth and ctlz >= 0 and ctlz < fieldHeight then
+          if ctlx and ctlz and ctlx >= 0 and ctlx < chunkTable.absWidth and ctlz >= 0 and ctlz < chunkTable.absHeight then
             lastControlX, lastControlZ = ctlx, ctlz
             cursorProp:setAtGrid(editmode, ctlx,ctlz)
 
