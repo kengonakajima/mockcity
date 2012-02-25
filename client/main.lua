@@ -135,7 +135,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 --      end      
 --    end
     
-    local hm = makeHeightMapMesh(CELLUNITSZ*self.zoomLevel, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false, self.zoomLevel )    
+    local hm = makeHeightMapMesh(CELLUNITSZ*self.zoomLevel, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false, 1)
     self:setDeck(hm)
     
     if not editmode and self.validMockNum > 0 then
@@ -160,7 +160,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
         end
       end
       
-      local mockmesh = makeHeightMapMesh( CELLUNITSZ*self.zoomLevel, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, omitdata, true, self.zoomLevel )
+      local mockmesh = makeHeightMapMesh( CELLUNITSZ*self.zoomLevel, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, omitdata, true, 1)
       self.mockp:setDeck(mockmesh )
       self.mockp:setColor(1,1,1,1)
       self.mockp:setCullMode( MOAIProp.CULL_BACK )
@@ -187,7 +187,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   end
       
   function p:toggleEditMode(mode)
-    print("toggleEditMode:",self.vx, self.vz, mode)
+--    print("toggleEditMode:",self.vx, self.vz, mode)
     if self.hdata then 
       self:updateHeightMap( mode )
     end    
@@ -543,9 +543,15 @@ function onMouseLeftEvent(down)
   end
   
 
-  -- no GUI, so on field
-  if guiSelectedButton == nil then return end
-  
+
+  local camx,camy,camz = camera:getLoc()
+  -- move camera
+  if guiSelectedButton == nil or camy > CURSOR_MAXY then
+    print( "movecam", lastControlX, lastControlZ)
+    seekWorldLoc( - lastControlX * CELLUNITSZ, - lastControlZ * CELLUNITSZ, 0.5 )
+    return
+  end
+  -- edit on field, with cursor.  
   if not cursorProp or not cursorProp.lastGridX then return end
   local curx,cury,curz = cursorProp:getLoc()
   if cury < 0 then return end
@@ -721,6 +727,13 @@ end
 function moveWorldLoc(dx,dz)
   setWorldLoc(scrollX + dx, scrollZ + dz)
 end
+function seekWorldLoc(x,z,second)
+  if not seekerProp then
+    seekerProp = MOAIProp.new()
+  end
+  seekerProp:setLoc(scrollX,0,scrollZ)
+  seekerProp:seekLoc(x,0,z, second)
+end
 function setWorldLoc(x,z)
   scrollX, scrollZ = x,z
   if chunkTable then
@@ -729,6 +742,14 @@ function setWorldLoc(x,z)
       end)
   end  
 end
+function updateWorldLoc()
+  if seekerProp then
+    local x,y,z = seekerProp:getLoc()
+    setWorldLoc(x,z)
+  end
+end      
+
+      
 
 function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
   for chx = chx1,chx2 do
@@ -765,27 +786,29 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
     
   local x,y,z = camx,camy,camz
   local camvec, dirvec = vec3(camx,camy,camz), vec3(dirx,diry,dirz)
-  local loopN = camy / CELLUNITSZ
+  local unit = CELLUNITSZ * currentZoomLevel
+  
+  local loopN = camy / unit
   local previx,previz
   
   for i=1,loopN*2 do
-    x,y,z = x + dirx * CELLUNITSZ, y + diry * CELLUNITSZ, z + dirz * CELLUNITSZ
-    local ix, iz = int(x/CELLUNITSZ), int(z/CELLUNITSZ)
+    x,y,z = x + dirx * unit, y + diry * unit, z + dirz * unit
+    local ix, iz = int(x/unit), int(z/unit)
     if ix ~= previx or iz ~= previz then
       local h4s = getHeights4( tgt, ix,iz)
 
       --  print("diffed.",ix,iz, h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom )
-      local ltY,rtY,rbY,lbY = h4s.leftTop * CELLUNITSZ, h4s.rightTop * CELLUNITSZ, h4s.rightBottom * CELLUNITSZ, h4s.leftBottom * CELLUNITSZ
-      local ltX,ltZ = ix*CELLUNITSZ, iz*CELLUNITSZ
-      local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rtY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ))
+      local ltY,rtY,rbY,lbY = h4s.leftTop * unit, h4s.rightTop * unit, h4s.rightBottom * unit, h4s.leftBottom * unit
+      local ltX,ltZ = ix*unit, iz*unit
+      local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rtY,ltZ), vec3(ltX+unit,rbY,ltZ+unit))
       if t then
 --        print("HIT TRIANGLE RIGHT-UP. x,z:", ix,iz)
-        return ix,iz
+        return ix*currentZoomLevel,iz*currentZoomLevel
       end
-      t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ), vec3(ltX,lbY,ltZ+CELLUNITSZ))
+      t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rbY,ltZ+unit), vec3(ltX,lbY,ltZ+unit))
       if t then
 --        print("HIT TRIANGLE LEFT-DOWN. x,z:",ix,iz)
-        return ix,iz
+        return ix*currentZoomLevel,iz*currentZoomLevel
       end
     end      
     previx,previz = ix,iz
@@ -964,8 +987,6 @@ conn:on("complete", function()
   end)
 
 
-
-
 ---------------------
 
 
@@ -1052,22 +1073,19 @@ th:run(function()
         local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
 --        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
         local editmode = guiSelectedButton and guiSelectedButton.editMode
-        if camy < CURSOR_MAXY then
---          local st = os.clock()
-          local ctlx,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
---          local et = os.clock()
---          print("t:", (et-st))
-          if ctlx and ctlz and ctlx >= 0 and ctlx < chunkTable.absWidth and ctlz >= 0 and ctlz < chunkTable.absHeight then
-            lastControlX, lastControlZ = ctlx, ctlz
-            cursorProp:setAtGrid(editmode, ctlx,ctlz)
-            appearCursor()
 
-            if editmode then
-              setEditModeAroundCursor(ctlx,ctlz, editmode)
-            end
-          else
-            disappearCursor()            
-          end
+--        local st = os.clock()
+        local ctlx,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+--        local et = os.clock()
+--        print("t:", (et-st), "ctl:",ctlx,ctlz)
+
+        if ctlx and ctlz and ctlx >= 0 and ctlx < chunkTable.absWidth and ctlz >= 0 and ctlz < chunkTable.absHeight then
+          lastControlX, lastControlZ = ctlx, ctlz
+        end
+        if camy < CURSOR_MAXY and ctlx and ctlz then          
+          cursorProp:setAtGrid(editmode, ctlx,ctlz)
+          appearCursor()
+          if editmode then setEditModeAroundCursor(ctlx,ctlz, editmode)  end
         else
           disappearCursor()
           clearAllEditModeChunks()
@@ -1099,8 +1117,6 @@ th:run(function()
           setZoomLevel(128)
         end
       end
-      
-      
 
 
       -- chat
@@ -1121,6 +1137,9 @@ th:run(function()
           end)
         assert(ret)
       end
+
+      --
+      updateWorldLoc()
 
       prevTime = t
       coroutine.yield()
