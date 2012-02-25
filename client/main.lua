@@ -135,7 +135,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 --      end      
 --    end
     
-    local hm = makeHeightMapMesh(CELLUNITSZ*self.zoomLevel, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false, 1)
+    local hm = makeHeightMapMesh(CELLUNITSZ*self.zoomLevel, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false, self.zoomLevel )    
     self:setDeck(hm)
     
     if not editmode and self.validMockNum > 0 then
@@ -160,7 +160,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
         end
       end
       
-      local mockmesh = makeHeightMapMesh( CELLUNITSZ*self.zoomLevel, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, omitdata, true, 1)
+      local mockmesh = makeHeightMapMesh( CELLUNITSZ*self.zoomLevel, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, omitdata, true, self.zoomLevel )
       self.mockp:setDeck(mockmesh )
       self.mockp:setColor(1,1,1,1)
       self.mockp:setCullMode( MOAIProp.CULL_BACK )
@@ -725,7 +725,7 @@ function getFieldMockHeight(x,z)
 end
 
 function moveWorldLoc(dx,dz)
-  setWorldLoc(scrollX + dx, scrollZ + dz)
+  seekWorldLoc(scrollX + dx, scrollZ + dz, 0.2)
 end
 function seekWorldLoc(x,z,second)
   if not seekerProp then
@@ -736,6 +736,7 @@ function seekWorldLoc(x,z,second)
 end
 function setWorldLoc(x,z)
   scrollX, scrollZ = x,z
+  seekerProp:setLoc(x,0,z)
   if chunkTable then
     chunkTable:scanAll( function(ch)
         ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
@@ -854,7 +855,8 @@ function camera:retargetY(toY)
     toY = ZOOM_MAXY
   end
   cz = toY * 0.4
-  camera:setLoc(cx,toY,cz)
+--  camera:setLoc(cx,toY,cz)
+  camera:seekLoc(cx,toY,cz,0.5)  
   if zoomSliderTab then zoomSliderTab:update(camera) end
   moveWorldLoc(0,0)
 end
