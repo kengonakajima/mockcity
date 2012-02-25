@@ -83,7 +83,7 @@ scrollX, scrollZ = 0,0
 
 -- vx,vy : starts from zero, grid coord.
 -- zoomlevel : 1,2,4,8, ..
-function makeHMProp(vx,vz,zoomlevel)
+function makeChunkHeightMapProp(vx,vz,zoomlevel)
   local p = MOAIProp.new()
 
   p.zoomLevel = zoomlevel
@@ -170,7 +170,7 @@ function makeHMProp(vx,vz,zoomlevel)
     else
       if self.mockp then self.mockp:setDeck(nil) end
     end
-    self:setLoc( self:getLoc() )
+    self:setLoc( self.vx*CELLUNITSZ+scrollX, 0,self.vz*CELLUNITSZ+scrollZ )
   end
 
   function p:dataIndex(modx,modz)
@@ -645,7 +645,7 @@ end
 
 function pollChunks(zoomlevel, centerx, centerz )
   if not chunkTable then return end
-  print("pollChunks")  
+
   local r = 8
   local centerChunkX, centerChunkZ = int(centerx/CELLUNITSZ/CHUNKSZ/zoomlevel), int(centerz/CELLUNITSZ/CHUNKSZ/zoomlevel)
   for dchz=-r,r do
@@ -662,7 +662,7 @@ function pollChunks(zoomlevel, centerx, centerz )
           local wx2,wy2 = fieldLayer:worldToWnd(x + CHUNKSZ*CELLUNITSZ*zoomlevel,y,z+CHUNKSZ*CELLUNITSZ*zoomlevel)
 --          print("aaa:",wx1,wy1,wx2,wy2)
           if wx2>0 and wy2>0 and wx1<SCRW and wy1<SCRH then
-            ch = makeHMProp(gridx,gridz,zoomlevel)
+            ch = makeChunkHeightMapProp(gridx,gridz,zoomlevel)
             chunkTable:setChunk( zoomlevel, chx,chz, ch )
             print("pollChunks: alloc chk:", chx, chz, gridx,gridz, ch )
           end          
@@ -677,7 +677,7 @@ function pollChunks(zoomlevel, centerx, centerz )
       end
       ch:poll()
     end)
-  print("outed:",outed)
+
 
 end
 
@@ -692,17 +692,17 @@ end
 
 function moveWorld(dx,dz)
   scrollX, scrollZ = scrollX + dx, scrollZ + dz
-  
-  chunkTable:scanAll( function(ch)
-      ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
-    end)
-
+  if chunkTable then
+    chunkTable:scanAll( function(ch)
+        ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
+      end)
+  end  
 end
 
 function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
   for chx = chx1,chx2 do
     for chz = chz1,chz2 do
-      local ch = chunkTable:get( 1, chx*CHUNKSZ, chz*CHUNKSZ )
+      local ch = chunkTable:getGrid( 1, chx*CHUNKSZ, chz*CHUNKSZ )
       if ch then cb(ch) end
     end
   end
@@ -790,6 +790,8 @@ function camera:retargetY(toY)
   cz = toY * 0.4
   camera:setLoc(cx,toY,cz)
   if zoomSliderTab then zoomSliderTab:update(camera) end
+  print("MMMMMMMMMMMMMMMMMM")
+  moveWorld(0,0)
 end
         
 function angle(x,y)
