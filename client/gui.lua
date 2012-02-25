@@ -12,7 +12,8 @@ function makeButton( name, x,y, deck, index, keycode, callback )
   p:setLoc(x,y)
   hudLayer:insertProp(p)
   p.flippable = true
-
+  p.available = true
+  
   if index then
     local iconp = MOAIProp2D.new()
     iconp:setDeck(deck)
@@ -30,7 +31,15 @@ function makeButton( name, x,y, deck, index, keycode, callback )
     p.shortcutProp:setColor(1,1,1,0.4)
     p.shortcutProp:noBG()
   end
-  
+
+  function p:setAvailable(flag)
+    if flag then
+      self:setColor(1,1,1,1)
+    else
+      self:setColor(0.5,0.5,0.5,0.3)
+    end
+    self.available = flag
+  end
   
   p.hitRect = { x1 = x -BUTTONSIZE/2, y1 = y-BUTTONSIZE/2, x2=x+BUTTONSIZE/2, y2=y+BUTTONSIZE/2 }
   p.callback = callback
@@ -42,7 +51,9 @@ end
 function processButtonMouseEvent(x,y,down)
   for i,v in ipairs(buttons) do
     if rectIncludes( v.hitRect, x,y ) then
-      v:callback(x,y,down)
+      if v.available then
+        v:callback(x,y,down)
+      end      
       return true
     end    
   end

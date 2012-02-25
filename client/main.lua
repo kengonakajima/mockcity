@@ -188,7 +188,9 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
       
   function p:toggleEditMode(mode)
     print("toggleEditMode:",self.vx, self.vz, mode)
-    self:updateHeightMap( mode )
+    if self.hdata then 
+      self:updateHeightMap( mode )
+    end    
     self.editMode = mode
     self:setLoc( self:getLoc() )
   end
@@ -296,7 +298,14 @@ function initButtons()
       setEditModeAroundCursor(lastControlX,lastControlZ, b.editMode)
     end
   end
+  editButtons = { upButton, downButton, flatButton, clearButton }
 end
+function toggleEditButtonsAvailable(flag)
+  for i,v in ipairs(editButtons) do
+    v:setAvailable(flag)
+  end  
+end
+
 
 
 -- log lines
@@ -698,8 +707,6 @@ function pollChunks(zoomlevel, centerx, centerz )
       end
       ch:poll()
     end)
-
-
 end
 
 function getFieldHeight(x,z)
@@ -711,8 +718,11 @@ function getFieldMockHeight(x,z)
   if ch then return ch:getMockHeight(x,z) else return nil end
 end
 
-function moveWorld(dx,dz)
-  scrollX, scrollZ = scrollX + dx, scrollZ + dz
+function moveWorldLoc(dx,dz)
+  setWorldLoc(scrollX + dx, scrollZ + dz)
+end
+function setWorldLoc(x,z)
+  scrollX, scrollZ = x,z
   if chunkTable then
     chunkTable:scanAll( function(ch)
         ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
@@ -823,7 +833,7 @@ function camera:retargetY(toY)
   cz = toY * 0.4
   camera:setLoc(cx,toY,cz)
   if zoomSliderTab then zoomSliderTab:update(camera) end
-  moveWorld(0,0)
+  moveWorldLoc(0,0)
 end
         
 function angle(x,y)
@@ -847,6 +857,8 @@ cursorLayer:insertProp(cursorProp)
 
 function disappearCursor()
   if not cursorProp then return false end
+
+  toggleEditButtonsAvailable(false)
   local x,y,z = cursorProp:getLoc()
   if y ~= -999999 then
     cursorProp:setLoc(0,-999999,0)
@@ -855,6 +867,10 @@ function disappearCursor()
     return false
   end  
 end
+function appearCursor()
+  toggleEditButtonsAvailable(true)
+end
+
 
 
 ----------------
@@ -901,11 +917,18 @@ conn:on("complete", function()
       end)
     conn:on("getFieldRectResult", function(arg)
         print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, "ndata:", #arg.hdata, #arg.tdata, #arg.mhdata )
+        -- ignore data that is too late
+        if arg.skip < currentZoomLevel/2 or arg.skip > currentZoomLevel*2 then
+          print("data is too late")
+          return
+        end
+        
         local ch = chunkTable:getGrid(arg.skip, arg.x1,arg.z1)
         if not ch then
           print("no chunk, ignore data")
           return
-        end        
+        end
+        
         ch.zoomLevel = arg.skip
         ch:setData( arg.tdata, arg.hdata, arg.mhdata )
         ch:updateHeightMap(ch.editMode)
@@ -934,7 +957,9 @@ conn:on("complete", function()
               ch:clean()
             end
           end)
-
+      end)
+    conn:on("cameraPos", function(arg)
+        setWorldLoc( - arg.x * CELLUNITSZ, - arg.z * CELLUNITSZ )
       end)
   end)
 
@@ -981,16 +1006,16 @@ th:run(function()
 
       local camSpeed = cy / 50
       if keyState[119] then --w
-        moveWorld(0,camSpeed)
+        moveWorldLoc(0,camSpeed)
       end
       if keyState[115] then --s
-        moveWorld(0,-camSpeed)
+        moveWorldLoc(0,-camSpeed)
       end
       if keyState[100] then --d
-        moveWorld(-camSpeed,0)
+        moveWorldLoc(-camSpeed,0)
       end
       if keyState[97] then --a
-        moveWorld(camSpeed,0)
+        moveWorldLoc(camSpeed,0)
       end
       if keyState[101] then --e
       end
@@ -1035,6 +1060,7 @@ th:run(function()
           if ctlx and ctlz and ctlx >= 0 and ctlx < chunkTable.absWidth and ctlz >= 0 and ctlz < chunkTable.absHeight then
             lastControlX, lastControlZ = ctlx, ctlz
             cursorProp:setAtGrid(editmode, ctlx,ctlz)
+            appearCursor()
 
             if editmode then
               setEditModeAroundCursor(ctlx,ctlz, editmode)
