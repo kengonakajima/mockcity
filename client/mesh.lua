@@ -71,7 +71,7 @@ end
 -- 1101 N
 -- 1110 R
 -- 1111 N
-function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
+function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, heightDiv )
 --  print("makeHeightMapMesh: sz:",sz, "w:",w,"h:",h,"dat:",#hdata, tdata )
 
   local vertNum = w * h
@@ -142,6 +142,11 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode )
         normalDiv = false
       end
 
+      leftTopHeight = leftTopHeight / heightDiv
+      leftBottomHeight = leftBottomHeight / heightDiv
+      rightTopHeight = rightTopHeight / heightDiv
+      rightBottomHeight = rightBottomHeight / heightDiv
+      
       if lineMode then
         if not toRed then
           -- need only 4 vert in line mode.

@@ -31,7 +31,7 @@ SCRW, SCRH = 960, 640
 ZOOM_MINY = 500
 ZOOM_MAXY = 5000000
 
-CURSOR_MAXY = 3000
+CURSOR_MAXY = 2000
 
 CHUNKSZ = 16
 CELLUNITSZ = 32
@@ -88,8 +88,6 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 
   p.zoomLevel = zoomlevel
   function p:setData( tdata, hdata, mhdata )
-    local tot=0
-    for i,v in ipairs(hdata) do tot = tot + v end
 --    print("hm:setData:", #tdata, #hdata, #mhdata, tot )
     local nElem = ( CHUNKSZ+1 ) * (CHUNKSZ+1) -- rightside and bottomsize require 1 more vertices
     assert( #tdata == nElem )
@@ -137,7 +135,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 --      end      
 --    end
     
-    local hm = makeHeightMapMesh(CELLUNITSZ, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false )    
+    local hm = makeHeightMapMesh(CELLUNITSZ*self.zoomLevel, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false, self.zoomLevel )    
     self:setDeck(hm)
     
     if not editmode and self.validMockNum > 0 then
@@ -162,7 +160,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
         end
       end
       
-      local mockmesh = makeHeightMapMesh( CELLUNITSZ, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, omitdata, true )
+      local mockmesh = makeHeightMapMesh( CELLUNITSZ*self.zoomLevel, CHUNKSZ+1, CHUNKSZ+1,1, self.mhdata, self.tdata, omitdata, true, self.zoomLevel )
       self.mockp:setDeck(mockmesh )
       self.mockp:setColor(1,1,1,1)
       self.mockp:setCullMode( MOAIProp.CULL_BACK )
@@ -202,26 +200,36 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
     origsetloc(self,x,y,z)
   end
 
-  function p:inWindow()
+  function p:inWindow(margin)
     local x,y,z = self:getLoc() 
     local winx1,winy1 = fieldLayer:worldToWnd(x,y,z)
     local winx2,winy2 = fieldLayer:worldToWnd(x+CELLUNITSZ*CHUNKSZ*self.zoomLevel, y, z+CELLUNITSZ*CHUNKSZ+self.zoomLevel )
-    return (  winx2 >= 0 and winy2 >= 0 and winx1 <= SCRW and winy1 <= SCRH )
+    return (  winx2 >= -margin and winy2 >= -margin and winx1 <= SCRW+margin and winy1 <= SCRH+margin )
   end
           
   function p:poll()
     if self.state == "init" then
-      if conn and self:inWindow() then
-        print("load rect:", self.state, self.vx, self.vz )      
+      if conn then
+        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel )      
         conn:emit("getFieldRect", {
             x1 = self.vx,
             z1 = self.vz,
-            x2 = self.vx + CHUNKSZ + 1,
-            z2 =  self.vz + CHUNKSZ + 1 } )
+            x2 = self.vx + CHUNKSZ*self.zoomLevel + 1*self.zoomLevel,
+            z2 =  self.vz + CHUNKSZ*self.zoomLevel + 1*self.zoomLevel,
+            skip = self.zoomLevel
+          } )
           self.state = "loading"
       end
     end
   end
+
+  function p:clean()
+    print("chunk clean:",self.zoomLevel,self.vx,self.vz)
+    if self.mockp then fieldLayer:removeProp(self.mockp) end
+    fieldLayer:removeProp(self)
+    chunkTable:remove( self.zoomLevel, int(self.vx/CHUNKSZ/self.zoomLevel), int(self.vz/CHUNKSZ/self.zoomLevel) )
+  end
+  
 
   p.state = "init"
   p.vx, p.vz = vx,vz
@@ -347,7 +355,7 @@ function initZoomSlider()
   end
   y = y - BUTTONSIZE
   zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("j"), function(self,x,y,down)
-      if down then camera:retargetYrate( 2 ) end
+      if down then camera:retargetYrate( 1.5 ) end
     end)
   zoomOutButton.flippable = false
 
@@ -407,7 +415,7 @@ function onKeyboardEvent(k,dn)
   local hit = processButtonShortcutKey(k,dn)
 
   if not hit and dn then
-    print("keyhit:", k, chatBox )
+    print("keyhit:", k, "chatbox:", chatBox )
     if k == 13 then -- start chat
       if chatBox then
         endChatMode(true)
@@ -425,12 +433,17 @@ function onKeyboardEvent(k,dn)
       end      
     else
       if k == 108 then --l
-        for i,v in ipairs(chunks) do
-          print("sssssss:", fieldLayer:worldToWnd( v:getLoc() ) )
-        end
-        
+        setZoomLevel( currentZoomLevel * 2 )
       end
-
+      if k == 109 then --m
+        local nz = int( currentZoomLevel / 2 )
+        if nz < 1 then nz = 1 end
+        setZoomLevel(nz)
+      end
+      if k == 110 then --n
+        chunkTable:dump()
+      end
+     
     end
   end
 
@@ -572,8 +585,9 @@ function ChunkTable(absW,absH)
   -- zoomlevel: 1,2,4,8,16,...
   function ct:ind(zoomlevel, chx,chz)
     local chunksz = CHUNKSZ * zoomlevel
-    local numHorizontalChunk = self.absWidth / chunksz
-    local numVerticalChunk = self.absHeight / chunksz
+    local numHorizontalChunk = int(self.absWidth / chunksz)
+    local numVerticalChunk = int(self.absHeight / chunksz)
+    
     if chx < 0 or chz < 0 or chx >= numHorizontalChunk or chz >= numVerticalChunk then
       return nil
     end    
@@ -629,7 +643,13 @@ function ChunkTable(absW,absH)
   end
   function ct:numList()
     return #self.list
-  end  
+  end
+  function ct:dump()
+    for i,v in ipairs(self.list) do
+      print("chunk:list:",i, v.zoomLevel, v.vx, v.vz )
+    end    
+  end
+  
   return ct
 end
 
@@ -646,11 +666,12 @@ end
 function pollChunks(zoomlevel, centerx, centerz )
   if not chunkTable then return end
 
-  local r = 8
+  local r = 6
   local centerChunkX, centerChunkZ = int(centerx/CELLUNITSZ/CHUNKSZ/zoomlevel), int(centerz/CELLUNITSZ/CHUNKSZ/zoomlevel)
+
   for dchz=-r,r do
     for dchx=-r,r do
-      local chx,chz = centerChunkX + dchx, centerChunkZ + dchz 
+      local chx,chz = centerChunkX + dchx, centerChunkZ + dchz
       if chunkTable:ind(zoomlevel, chx, chz ) then
         local ch = chunkTable:getChunk(zoomlevel, chx,chz )
         if not ch then
@@ -664,7 +685,7 @@ function pollChunks(zoomlevel, centerx, centerz )
           if wx2>0 and wy2>0 and wx1<SCRW and wy1<SCRH then
             ch = makeChunkHeightMapProp(gridx,gridz,zoomlevel)
             chunkTable:setChunk( zoomlevel, chx,chz, ch )
-            print("pollChunks: alloc chk:", chx, chz, gridx,gridz, ch )
+            print("pollChunks: alloc chk:", zoomlevel, chx, chz, gridx,gridz, ch )
           end          
         end
       end
@@ -672,8 +693,8 @@ function pollChunks(zoomlevel, centerx, centerz )
   end
   local outed = 0
   chunkTable:scanAll( function(ch)
-      if not ch:inWindow() then
-        outed = outed + 1
+      if not ch:inWindow(300) and ch.state == "loaded" then
+        ch:clean()
       end
       ch:poll()
     end)
@@ -763,6 +784,18 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
   return nil
 end
 
+
+-- level: 1,2,4,8, ..
+currentZoomLevel = 1
+function setZoomLevel(level)
+  currentZoomLevel = level
+  
+end
+
+
+
+
+
 ---------------------------
 
 -- cam
@@ -790,7 +823,6 @@ function camera:retargetY(toY)
   cz = toY * 0.4
   camera:setLoc(cx,toY,cz)
   if zoomSliderTab then zoomSliderTab:update(camera) end
-  print("MMMMMMMMMMMMMMMMMM")
   moveWorld(0,0)
 end
         
@@ -868,12 +900,40 @@ conn:on("complete", function()
         appendLog( arg.text )
       end)
     conn:on("getFieldRectResult", function(arg)
---        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, #arg.hdata, #arg.tdata, #arg.mhdata )
-        local ch = chunkTable:getGrid(1, arg.x1,arg.z1)
-        assert(ch)
+        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, "ndata:", #arg.hdata, #arg.tdata, #arg.mhdata )
+        local ch = chunkTable:getGrid(arg.skip, arg.x1,arg.z1)
+        if not ch then
+          print("no chunk, ignore data")
+          return
+        end        
+        ch.zoomLevel = arg.skip
         ch:setData( arg.tdata, arg.hdata, arg.mhdata )
         ch:updateHeightMap(ch.editMode)
         ch.state = "loaded"
+        -- clean lower level 4 chunks when load finished
+        local chx,chz = int(arg.x1/CHUNKSZ/arg.skip), int(arg.z1/CHUNKSZ/arg.skip)
+        if arg.skip > 1 then
+          for dx=0,1 do
+            for dz=0,1 do
+              local lowchx, lowchz = chx*2+dx,chz*2+dz
+              local ch = chunkTable:getChunk(arg.skip/2,lowchx,lowchz)
+              if ch then
+                print("cleaning lower chunks:", lowchx,lowchz)
+                ch:clean()
+              end
+            end
+          end
+        end
+        -- clean higher level 1 chunks when 4 load finished
+        local ch2x,ch2z = int(arg.x1/CHUNKSZ/arg.skip/2), int(arg.z1/CHUNKSZ/arg.skip/2)
+        local ch = chunkTable:getChunk(arg.skip*2,ch2x,ch2z)
+        if ch then ch:clean() end
+        -- clean every far levels
+        chunkTable:scanAll( function(ch)
+            if ch.zoomLevel < int(arg.skip/2) or ch.zoomLevel > int(arg.skip*2) then
+              ch:clean()
+            end
+          end)
 
       end)
   end)
@@ -907,12 +967,12 @@ th:run(function()
         local chknum = 0
         if chunkTable then chknum = chunkTable:numList() end
 --        statBox:set( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. chknum .. " cam:" .. camy .. "  " .. curmode )
-        statBox:set( string.format("fps:%d cur:%d,%d,%d cam:%d scr:%d,%d chk:%d %s",frameCnt,x,y,z,camy, scrollX,scrollZ, chknum, curmode))
+        statBox:set( string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d scr:%d,%d chk:%d %s",frameCnt, currentZoomLevel, x,y,z,camy, -scrollX,-scrollZ, chknum, curmode))
         frameCnt = 0
       end
 
       -- alloc/clean/update chunks
-      pollChunks(1,-scrollX, -scrollZ)
+      pollChunks( currentZoomLevel, -scrollX, -scrollZ)
       
       -- cams and moves      
       local cx,cy,cz = camera:getLoc()
@@ -961,14 +1021,12 @@ th:run(function()
       if cy ~= prevcy and zoomSliderTab then zoomSliderTab:update(camera) end
 
       -- update cursor
+      local camx,camy,camz = camera:getLoc()
+      
       if lastPointerX then 
         local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
 --        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
-
-        local camx,camy,camz = camera:getLoc()
-        
         local editmode = guiSelectedButton and guiSelectedButton.editMode
-        
         if camy < CURSOR_MAXY then
 --          local st = os.clock()
           local ctlx,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
@@ -993,7 +1051,31 @@ th:run(function()
             updateButtonBGs()
           end
         end
-      end      
+      end
+
+      -- adjust zoom level
+      if chunkTable then
+        if camy < 4000 then
+          setZoomLevel(1)
+        elseif camy < 8000 then
+          setZoomLevel(2)
+        elseif camy < 16000 then
+          setZoomLevel(4)          
+        elseif camy < 32000 then
+          setZoomLevel(8)
+        elseif camy < 64000 then
+          setZoomLevel(16)
+        elseif camy < 128000 then
+          setZoomLevel(32)
+        elseif camy < 256000 then
+          setZoomLevel(64)
+        else
+          setZoomLevel(128)
+        end
+      end
+      
+      
+
 
       -- chat
       if chatBox then chatBox:update(dt) end
