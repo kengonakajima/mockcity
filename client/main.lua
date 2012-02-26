@@ -108,7 +108,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
     end
 
     local showreddata = {}
-    if not editmode then
+    if not editmode then -- imcomplete on chunk border! TODO:refactor.
       for i=1,#self.hdata do showreddata[i] = false end
       for z=0,CHUNKSZ-1 do
         for x=0,CHUNKSZ-1 do
@@ -134,8 +134,39 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 --        print( "iii:",i,v, showhdata[i], self.mhdata[i])
 --      end      
 --    end
+
+    local showtdata
+    if not editmode then
+      showtdata = self.tdata
+    else
+      showtdata = {} -- incomplete on chunk border. TODO:refactor!
+      for i,v in ipairs(self.tdata) do showtdata[i]=v end
+      for z=0,CHUNKSZ-1 do
+        for x=0,CHUNKSZ-1 do
+          local ind = x + z*(CHUNKSZ+1) + 1
+--          if self.mhdata[ind]~=self.hdata[ind] then
+--            print("k:",x,z,showtdata[ind],showhdata[ind],showtdata[ind-1],showhdata[ind-1])
+--          end          
+          if showhdata[ind] > 0 then
+            if self.tdata[ind] == CELLTYPE.WATER then
+              showtdata[ind] = CELLTYPE.SAND
+            end
+            if ind - 1 >= 1 and showhdata[ind-1] == 0 and showtdata[ind-1] == CELLTYPE.WATER then
+              showtdata[ ind-1 ] = CELLTYPE.SAND
+            end
+            if ind - (CHUNKSZ+1) >= 1 and showhdata[ind-(CHUNKSZ+1)] == 0 and showtdata[ind-(CHUNKSZ+1)] == CELLTYPE.WATER then
+              showtdata[ ind - (CHUNKSZ+1) ] = CELLTYPE.SAND
+            end
+            if ind - (CHUNKSZ+1) - 1 >= 1 and showhdata[ind-(CHUNKSZ+1)-1] == 0 and showtdata[ind-(CHUNKSZ+1)-1] == CELLTYPE.WATER then
+              showtdata[ ind - (CHUNKSZ+1) - 1] = CELLTYPE.SAND
+            end
+          end          
+        end
+      end
+    end
     
-    local hm = makeHeightMapMesh(CELLUNITSZ*self.zoomLevel, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, self.tdata, showreddata, false, self.zoomLevel )    
+
+    local hm = makeHeightMapMesh(CELLUNITSZ*self.zoomLevel, CHUNKSZ+1,CHUNKSZ+1, lightRate, showhdata, showtdata, showreddata, false, self.zoomLevel )    
     self:setDeck(hm)
     
     if not editmode and self.validMockNum > 0 then
