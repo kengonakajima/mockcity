@@ -933,6 +933,12 @@ conn:on("complete", function()
     conn:on("hello", function(arg)
         print("server revision:", arg.revision )
       end)
+    conn:on("pong", function(arg)
+        local rtt = now() - arg.givenTime
+        print("pong.givenTime:",rtt)
+        conn.lastRtt = rtt
+        
+      end)
     conn:on("fieldConf", function(arg)
         print("fieldConf. wh:", arg.width, arg.height )
         chunkTable = ChunkTable(arg.width, arg.height)
@@ -993,6 +999,15 @@ conn:on("complete", function()
       end)
   end)
 
+function trySendPing(s)
+  if not lastPingAt then lastPingAt = 0 end
+  local t = now()
+  if conn and lastPingAt <t - 5 then
+    conn:emit("ping",{status=s,time=t})
+    lastPingAt = t
+  end  
+end
+
 
 ---------------------
 
@@ -1019,8 +1034,11 @@ th:run(function()
         local camx,camy,camz = camera:getLoc()
         local chknum = 0
         if chunkTable then chknum = chunkTable:numList() end
---        statBox:set( "fps:" .. frameCnt .. " x:" .. x .. " y:" .. y .. " z:" .. z .. " chk:" .. chknum .. " cam:" .. camy .. "  " .. curmode )
-        statBox:set( string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d scr:%d,%d chk:%d %s",frameCnt, currentZoomLevel, x,y,z,camy, -scrollX,-scrollZ, chknum, curmode))
+        local rtt = -1
+        if conn and conn.lastRtt then rtt = conn.lastRtt * 1000 end
+        local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d scr:%d,%d chk:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z,camy, -scrollX,-scrollZ, chknum, rtt, curmode)
+        statBox:set(s)
+        trySendPing(s)
         frameCnt = 0
       end
 
