@@ -218,7 +218,8 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   end
       
   function p:toggleEditMode(mode)
---    print("toggleEditMode:",self.vx, self.vz, mode)
+
+    print("toggleEditMode:",self.vx, self.vz, mode)
     if self.hdata then 
       self:updateHeightMap( mode )
     end    
@@ -983,7 +984,7 @@ conn:on("complete", function()
         if arg.hdata then
           ss = "ndata:".. #arg.hdata .. #arg.tdata .. #arg.mhdata
         end        
-        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, ss )
+--        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, ss )
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 or arg.skip > currentZoomLevel*2 then
           print("data is too late")
@@ -1142,10 +1143,12 @@ th:run(function()
         if ctlx and ctlz and ctlx >= 0 and ctlx < chunkTable.absWidth and ctlz >= 0 and ctlz < chunkTable.absHeight then
           lastControlX, lastControlZ = ctlx, ctlz
         end
-        if camy < CURSOR_MAXY and ctlx and ctlz then          
-          cursorProp:setAtGrid(editmode, ctlx,ctlz)
+        if camy < CURSOR_MAXY then
+          if lastControlX then
+            cursorProp:setAtGrid(editmode, lastControlX, lastControlZ)
+          end          
           appearCursor()
-          if editmode then setEditModeAroundCursor(ctlx,ctlz, editmode)  end
+          if editmode then setEditModeAroundCursor(lastControlX,lastControlZ, editmode)  end
         else
           disappearCursor()
           clearAllEditModeChunks()
