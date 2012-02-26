@@ -941,7 +941,11 @@ conn:on("complete", function()
         appendLog( arg.text )
       end)
     conn:on("getFieldRectResult", function(arg)
-        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, "ndata:", #arg.hdata, #arg.tdata, #arg.mhdata )
+        local ss = ""
+        if arg.hdata then
+          ss = "ndata:".. #arg.hdata .. #arg.tdata .. #arg.mhdata
+        end        
+        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, ss )
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 or arg.skip > currentZoomLevel*2 then
           print("data is too late")
