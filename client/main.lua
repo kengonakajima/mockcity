@@ -725,14 +725,14 @@ function getFieldMockHeight(x,z)
 end
 
 function moveWorldLoc(dx,dz)
-  seekWorldLoc(scrollX + dx, scrollZ + dz, 0.2)
+  seekWorldLoc(scrollX + dx, scrollZ + dz, 0.1)
 end
 function seekWorldLoc(x,z,second)
   if not seekerProp then
     seekerProp = MOAIProp.new()
   end
-  seekerProp:setLoc(scrollX,0,scrollZ)
-  seekerProp:seekLoc(x,0,z, second)
+--  seekerProp:setLoc(scrollX,0,scrollZ)
+  seekerProp:seekLoc(x,0,z, second, MOAIEaseType.LINEAR )
 end
 function setWorldLoc(x,z)
   scrollX, scrollZ = x,z
