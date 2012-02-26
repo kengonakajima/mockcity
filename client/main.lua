@@ -856,6 +856,7 @@ function camera:retargetY(toY)
   end
   cz = toY * 0.4
 --  camera:setLoc(cx,toY,cz)
+  print("SSSSSSSSSSSSSSSSSSSSSSSS:", toY)
   camera:seekLoc(cx,toY,cz,0.5)  
   if zoomSliderTab then zoomSliderTab:update(camera) end
   moveWorldLoc(0,0)
@@ -1069,7 +1070,11 @@ th:run(function()
 
 
       cz = cy * 0.4
+
+      if cy < ZOOM_MINY then cy = ZOOM_MINY end
+      if cy > ZOOM_MAXY then cy = ZOOM_MAXY end
       camera:setLoc( cx, cy, cz )
+      
       if cy ~= prevcy and zoomSliderTab then zoomSliderTab:update(camera) end
 
       -- update cursor
