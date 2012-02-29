@@ -12,6 +12,8 @@ require "./textbox"
 require "./gui"
 require "./config" 
 
+require "./char"
+
 package.path = package.path .. ";./deps/lua-msgpack/?.lua;"
 
 require "./deps/lua-msgpack/msgpack" 
@@ -82,7 +84,7 @@ guiDeck = loadTileDeck2( "./images/guibase.png", 8,8, 32, 256,256, nil,true)
 baseDeck = loadTex( "./images/citybase.png" )
 cursorDeck = loadGfxQuad( "./images/cursor.png" )
 charDeck = loadTex( "./images/charbase.png" )
-
+--charDeck2 = loadTileDeck2( "./images/charbase.png", 8,8,16,128,128,nil,true)
 
 scrollX, scrollZ = 0,0
 
@@ -318,38 +320,6 @@ function makeCursor()
   return p
 end
 
-chars={}
-function makeChar(x,z,deck,index)
-  local h = getFieldHeight(x,z)
-  if not h then
-    print("makeChar: invalid coord or no chunk?:",x,z)
-    return
-  end
-    
-  local ch = MOAIProp.new()  
-  local mesh = makeSquareBoardMesh(deck,index)
-  ch:setDeck(mesh)
-  local scl = 1.5
-  ch:setScl(scl,scl,scl)
-  ch:setRot(-45,0,0)
-  function ch:moveToGrid(x,z)
-    local xx,yy,zz = getFieldGridLoc(x,z)
-    if not xx then return end
-    local h = getFieldHeight(x,z)
-    assert(h)
-    self.gridX, self.gridY, self.gridZ = x,h,z    
-    xx,yy,zz =  xx+CELLUNITSZ/2, yy+CELLUNITSZ/2-5, zz+CELLUNITSZ/2
-    if not self.gridX then
-      self:setLoc(xx,yy,zz)
-    end    
-    self:seekLoc(xx,yy,zz, 0.5 )
-
-  end
-  ch:moveToGrid(x,z)
-  charLayer:insertProp(ch)
-  table.insert(chars,ch)
-  return ch
-end
 
 -- init all tools
 function initButtons()
@@ -531,16 +501,18 @@ function onKeyboardEvent(k,dn)
       if k == 108 then --l
         if lastControlX then
           print("putting char:", charDeck )
-          local n = 20
+          local n = 10
           for xx=1,n do
             for zz=1,n do
               local ind = 1
               if range(0,100) > 10 then
                 ind = 34
-              end              
+              end
+              print("at:", lastControlX+xx, lastControlZ + zz )
               local ch =   makeChar(lastControlX + xx,lastControlZ + zz, charDeck, ind )
               if ch then
                 ch:setLoc( cursorProp:getLoc() )
+                ch:setState(CHARSTATE.WALK)
               end
             end
           end          
@@ -1178,6 +1150,9 @@ th:run(function()
 
       -- alloc/clean/update chunks
       pollChunks( currentZoomLevel, -scrollX, -scrollZ)
+
+      -- update chars
+      pollChars()
       
       -- cams and moves      
       local cx,cy,cz = camera:getLoc()
