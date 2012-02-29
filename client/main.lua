@@ -29,7 +29,7 @@ rpc = mprpc.create(net,msgpack)
 SCRW, SCRH = 960, 640
 
 ZOOM_MINY = 500
-ZOOM_MAXY = 5000000
+ZOOM_MAXY = 500000
 
 CURSOR_MAXY = 2000
 
@@ -54,6 +54,11 @@ fieldLayer:setViewport(viewport)
 fieldLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
 MOAISim.pushRenderPass(fieldLayer)
 
+charLayer = MOAILayer.new()
+charLayer:setViewport(viewport)
+charLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING )
+MOAISim.pushRenderPass(charLayer)
+
 cursorLayer = MOAILayer.new()
 cursorLayer:setViewport(viewport)
 cursorLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
@@ -76,6 +81,7 @@ btnSound:load( "sounds/whip.wav" )
 guiDeck = loadTileDeck2( "./images/guibase.png", 8,8, 32, 256,256, nil,true)
 baseDeck = loadTex( "./images/citybase.png" )
 cursorDeck = loadGfxQuad( "./images/cursor.png" )
+charDeck = loadTex( "./images/charbase.png" )
 
 
 scrollX, scrollZ = 0,0
@@ -244,7 +250,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   function p:poll()
     if self.state == "init" then
       if conn then
-        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel )      
+--        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel )      
         conn:emit("getFieldRect", {
             x1 = self.vx,
             z1 = self.vz,
@@ -258,7 +264,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   end
 
   function p:clean()
-    print("chunk clean:",self.zoomLevel,self.vx,self.vz)
+--    print("chunk clean:",self.zoomLevel,self.vx,self.vz)
     if self.mockp then fieldLayer:removeProp(self.mockp) end
     fieldLayer:removeProp(self)
     chunkTable:remove( self.zoomLevel, int(self.vx/CHUNKSZ/self.zoomLevel), int(self.vz/CHUNKSZ/self.zoomLevel) )
@@ -276,6 +282,21 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   return p
 end
 
+function getFieldGridLoc(x,z,lookatmock)
+  local h
+  if lookatmock then
+    h = getFieldMockHeight(x,z)
+  else
+    h = getFieldHeight(x,z)
+  end
+  
+  if h then
+    return x * CELLUNITSZ + scrollX, h*CELLUNITSZ, z * CELLUNITSZ + scrollZ
+  else
+    return nil
+  end  
+end
+
 function makeCursor()
   local p = MOAIProp.new()
   p:setDeck(cursorDeck)
@@ -284,16 +305,50 @@ function makeCursor()
 --  p:setCullMode( MOAIProp.CULL_BACK)
 --  p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
   function p:setAtGrid(editmode, x,z)
-    local xx,zz = x * CELLUNITSZ, z * CELLUNITSZ
-    local h = getFieldHeight(x,z)
-    if editmode then h = getFieldMockHeight(x,z) end
-    if h then
-      local yy = h * CELLUNITSZ
-      self:setLoc(xx + scrollX,yy + CELLUNITSZ/2 - 5, zz + scrollZ)
+    local xx,yy,zz = getFieldGridLoc( x,z,editmode )
+    if xx then
+      self:setLoc(xx,yy + CELLUNITSZ/2 - 5, zz )
       self.lastGridX, self.lastGridZ = x,z
     end    
-  end 
+  end
+
+  p:setLoc(0,CELLUNITSZ/2,0)
+  cursorLayer:insertProp(p)
+  
   return p
+end
+
+chars={}
+function makeChar(x,z,deck,index)
+  local h = getFieldHeight(x,z)
+  if not h then
+    print("makeChar: invalid coord or no chunk?:",x,z)
+    return
+  end
+    
+  local ch = MOAIProp.new()  
+  local mesh = makeSquareBoardMesh(deck,index)
+  ch:setDeck(mesh)
+  local scl = 1.5
+  ch:setScl(scl,scl,scl)
+  ch:setRot(-45,0,0)
+  function ch:moveToGrid(x,z)
+    local xx,yy,zz = getFieldGridLoc(x,z)
+    if not xx then return end
+    local h = getFieldHeight(x,z)
+    assert(h)
+    self.gridX, self.gridY, self.gridZ = x,h,z    
+    xx,yy,zz =  xx+CELLUNITSZ/2, yy+CELLUNITSZ/2-5, zz+CELLUNITSZ/2
+    if not self.gridX then
+      self:setLoc(xx,yy,zz)
+    end    
+    self:seekLoc(xx,yy,zz, 0.5 )
+
+  end
+  ch:moveToGrid(x,z)
+  charLayer:insertProp(ch)
+  table.insert(chars,ch)
+  return ch
 end
 
 -- init all tools
@@ -396,7 +451,7 @@ function initZoomSlider()
   end
   y = y - BUTTONSIZE
   zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("j"), function(self,x,y,down)
-      if down then camera:retargetYrate( 1.5 ) end
+      if down then camera:retargetYrate( 1.25 ) end
     end)
   zoomOutButton.flippable = false
 
@@ -474,15 +529,28 @@ function onKeyboardEvent(k,dn)
       end      
     else
       if k == 108 then --l
-        setZoomLevel( currentZoomLevel * 2 )
+        if lastControlX then
+          print("putting char:", charDeck )
+          local n = 20
+          for xx=1,n do
+            for zz=1,n do
+              local ind = 1
+              if range(0,100) > 10 then
+                ind = 34
+              end              
+              local ch =   makeChar(lastControlX + xx,lastControlZ + zz, charDeck, ind )
+              if ch then
+                ch:setLoc( cursorProp:getLoc() )
+              end
+            end
+          end          
+        end        
       end
       if k == 109 then --m
-        local nz = int( currentZoomLevel / 2 )
-        if nz < 1 then nz = 1 end
-        setZoomLevel(nz)
+
       end
       if k == 110 then --n
-        chunkTable:dump()
+--        chunkTable:dump()
       end
      
     end
@@ -575,10 +643,18 @@ function onMouseLeftEvent(down)
   end
   
 
+  if not chunkTable then return end
 
   local camx,camy,camz = camera:getLoc()
+  local centerx,centery,centerz = getCameraCenterGrid()
+  
+  local dcamy = camy
+  if centery then
+    dcamy = camy - centery*CELLUNITSZ
+  end
+  
   -- move camera
-  if guiSelectedButton == nil or camy > CURSOR_MAXY then
+  if guiSelectedButton == nil or dcamy > CURSOR_MAXY then
     print( "movecam", lastControlX, lastControlZ)
     seekWorldLoc( - lastControlX * CELLUNITSZ, - lastControlZ * CELLUNITSZ, 0.5 )
     return
@@ -732,7 +808,7 @@ function pollChunks(zoomlevel, centerx, centerz )
           if wx2>0 and wy2>0 and wx1<SCRW and wy1<SCRH then
             ch = makeChunkHeightMapProp(gridx,gridz,zoomlevel)
             chunkTable:setChunk( zoomlevel, chx,chz, ch )
-            print("pollChunks: alloc chk:", zoomlevel, chx, chz, gridx,gridz, ch )
+--            print("pollChunks: alloc chk:", zoomlevel, chx, chz, gridx,gridz, ch )
           end          
         end
       end
@@ -748,11 +824,11 @@ function pollChunks(zoomlevel, centerx, centerz )
 end
 
 function getFieldHeight(x,z)
-  local ch = chunkTable:getGrid(1,x,z)
+  local ch = chunkTable:getGrid(currentZoomLevel,x,z)
   if ch then return ch:getHeight(x,z) else return nil end
 end
 function getFieldMockHeight(x,z)
-  local ch = chunkTable:getGrid(1,x,z)
+  local ch = chunkTable:getGrid(currentZoomLevel,x,z)
   if ch then return ch:getMockHeight(x,z) else return nil end
 end
 
@@ -773,6 +849,11 @@ function setWorldLoc(x,z)
     chunkTable:scanAll( function(ch)
         ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
       end)
+  end
+  if chars then
+    for i,v in ipairs(chars) do
+      v:setLoc( v.gridX * CELLUNITSZ + CELLUNITSZ/2 + scrollX, v.gridY * CELLUNITSZ, v.gridZ * CELLUNITSZ + CELLUNITSZ/2 + scrollZ )
+    end    
   end  
 end
 function updateWorldLoc()
@@ -781,7 +862,6 @@ function updateWorldLoc()
     setWorldLoc(x,z)
   end
 end      
-
       
 
 function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
@@ -826,7 +906,7 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
   
   for i=1,loopN*2 do
     x,y,z = x + dirx * unit, y + diry * unit, z + dirz * unit
-    local ix, iz = int(x/unit), int(z/unit)
+    local ix, iy, iz = int(x/unit), int(y/unit), int(z/unit)
     if ix ~= previx or iz ~= previz then
       local h4s = getHeights4( tgt, ix,iz)
 
@@ -836,12 +916,12 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
       local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rtY,ltZ), vec3(ltX+unit,rbY,ltZ+unit))
       if t then
 --        print("HIT TRIANGLE RIGHT-UP. x,z:", ix,iz)
-        return ix*currentZoomLevel,iz*currentZoomLevel
+        return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
       t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rbY,ltZ+unit), vec3(ltX,lbY,ltZ+unit))
       if t then
 --        print("HIT TRIANGLE LEFT-DOWN. x,z:",ix,iz)
-        return ix*currentZoomLevel,iz*currentZoomLevel
+        return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
     end      
     previx,previz = ix,iz
@@ -868,15 +948,34 @@ end
 camera = MOAICamera3D.new ()
 local z = camera:getFocalLength ( SCRW )
 camera:setFarPlane( ZOOM_MAXY*2 )
+--camera:setNearPlane(1)
 camera:setLoc ( 0, ZOOM_MINY, 800 )
 camera.flyUp = false
 
 fieldLayer:setCamera ( camera )
+charLayer:setCamera( camera )
 cursorLayer:setCamera ( camera )
 
 function camera:retargetYrate(yrate)
   local cx,cy,cz = camera:getLoc()
-  local toY = cy * yrate
+  local centerx,centery,centerz = getCameraCenterGrid()
+  if not centerx then return end
+  centery = centery * CELLUNITSZ
+  local dcamy = cy
+  if centery then
+    print("AHOAHOA:", centery )
+    dcamy = cy - centery
+    lastcentery = centery
+  elseif lastcentery then
+    dcamy = cy - lastcentery
+  end
+  print("dcamy:",dcamy, "cy:", cy )
+  local toY
+  if yrate > 1 then
+    toY = cy + dcamy * yrate
+  elseif yrate < 1 then
+    toY = dcamy * yrate
+  end
   camera:retargetY(toY)
 end
 function camera:retargetY(toY)  
@@ -888,11 +987,17 @@ function camera:retargetY(toY)
   end
   cz = toY * 0.4
 --  camera:setLoc(cx,toY,cz)
-  print("SSSSSSSSSSSSSSSSSSSSSSSS:", toY)
   camera:seekLoc(cx,toY,cz,0.5)  
   if zoomSliderTab then zoomSliderTab:update(camera) end
   moveWorldLoc(0,0)
 end
+
+function getCameraCenterGrid()
+  local camx,camy,camz = camera:getLoc()  
+  local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(SCRW/2,SCRH/2)
+  return findFieldControlPoint( editmode, camx-scrollX,camy,camz-scrollZ, xn,yn,zn)
+end
+
         
 function angle(x,y)
   local l = math.sqrt(x*x+y*y)
@@ -910,8 +1015,6 @@ camera:retargetY( ZOOM_MINY )
 -- cursor
 
 cursorProp = makeCursor()
-cursorProp:setLoc(0,CELLUNITSZ/2,0)
-cursorLayer:insertProp(cursorProp)
 
 function disappearCursor()
   if not cursorProp then return false end
@@ -1009,7 +1112,6 @@ conn:on("complete", function()
               local lowchx, lowchz = chx*2+dx,chz*2+dz
               local ch = chunkTable:getChunk(arg.skip/2,lowchx,lowchz)
               if ch then
-                print("cleaning lower chunks:", lowchx,lowchz)
                 ch:clean()
               end
             end
@@ -1068,7 +1170,7 @@ th:run(function()
         if chunkTable then chknum = chunkTable:numList() end
         local rtt = -1
         if conn and conn.lastRtt then rtt = conn.lastRtt * 1000 end
-        local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d scr:%d,%d chk:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z,camy, -scrollX,-scrollZ, chknum, rtt, curmode)
+        local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d scr:%d,%d,%d chk:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z,camy, -scrollX,0, -scrollZ, chknum, rtt, curmode)
         statBox:set(s)
         trySendPing(s)
         frameCnt = 0
@@ -1128,53 +1230,63 @@ th:run(function()
       if cy ~= prevcy and zoomSliderTab then zoomSliderTab:update(camera) end
 
       -- update cursor
-      local camx,camy,camz = camera:getLoc()
-      
-      if lastPointerX then 
-        local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
---        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
-        local editmode = guiSelectedButton and guiSelectedButton.editMode
+      if chunkTable then
+        
+        local camx,camy,camz = camera:getLoc()
+        local centerx,centery,centerz = getCameraCenterGrid()
 
---        local st = os.clock()
-        local ctlx,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
---        local et = os.clock()
---        print("t:", (et-st), "ctl:",ctlx,ctlz)
-
-        if ctlx and ctlz and ctlx >= 0 and ctlx < chunkTable.absWidth and ctlz >= 0 and ctlz < chunkTable.absHeight then
-          lastControlX, lastControlZ = ctlx, ctlz
+        local dcamy = camy
+        if centerx then
+          lastdcamy = dcamy
+          dcamy = camy - centery * CELLUNITSZ
+        elseif lastdcamy then
+          dcamy = lastdcamy
         end
-        if camy < CURSOR_MAXY then
-          if lastControlX then
-            cursorProp:setAtGrid(editmode, lastControlX, lastControlZ)
-          end          
-          appearCursor()
-          if editmode then setEditModeAroundCursor(lastControlX,lastControlZ, editmode)  end
-        else
-          disappearCursor()
-          clearAllEditModeChunks()
-          if guiSelectedButton then
-            guiSelectedButton.selected = false
-            guiSelectedButton = nil
-            updateButtonBGs()
+        
+        if lastPointerX then 
+          local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
+          --        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
+          local editmode = guiSelectedButton and guiSelectedButton.editMode
+
+          --        local st = os.clock()
+          local ctlx,ctly,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+          --        local et = os.clock()
+          --        print("t:", (et-st), "ctl:",ctlx,ctlz)
+
+          if ctlx and ctlz and ctlx >= 0 and ctlx < chunkTable.absWidth and ctlz >= 0 and ctlz < chunkTable.absHeight then
+            lastControlX, lastControlZ = ctlx, ctlz
+          end
+          if dcamy < CURSOR_MAXY then
+            if lastControlX then
+              cursorProp:setAtGrid(editmode, lastControlX, lastControlZ)
+            end          
+            appearCursor()
+            if editmode then setEditModeAroundCursor(lastControlX,lastControlZ, editmode)  end
+          else
+            disappearCursor()
+            clearAllEditModeChunks()
+            if guiSelectedButton then
+              guiSelectedButton.selected = false
+              guiSelectedButton = nil
+              updateButtonBGs()
+            end
           end
         end
-      end
 
-      -- adjust zoom level
-      if chunkTable then
-        if camy < 4000 then
+        -- adjust zoom level
+        if dcamy < 4000 then
           setZoomLevel(1)
-        elseif camy < 8000 then
+        elseif dcamy < 8000 then
           setZoomLevel(2)
-        elseif camy < 16000 then
+        elseif dcamy < 16000 then
           setZoomLevel(4)          
-        elseif camy < 32000 then
+        elseif dcamy < 32000 then
           setZoomLevel(8)
-        elseif camy < 64000 then
+        elseif dcamy < 64000 then
           setZoomLevel(16)
-        elseif camy < 128000 then
+        elseif dcamy < 128000 then
           setZoomLevel(32)
-        elseif camy < 256000 then
+        elseif dcamy < 256000 then
           setZoomLevel(64)
         else
           setZoomLevel(128)
@@ -1187,7 +1299,7 @@ th:run(function()
       
       -- network
       if conn then
-        local onePollTimeout = 0.01
+        local onePollTimeout = 0.05
         conn.pollStartAt = t
         conn:poll()
         local ret = conn:pollMessage( function()
@@ -1200,7 +1312,7 @@ th:run(function()
           end)
         assert(ret)
       end
-
+      
       --
       updateWorldLoc()
 

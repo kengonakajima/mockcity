@@ -44,6 +44,11 @@ function normalize(x,y,l)
   return x / ll * l, y / ll * l
 end
 
+function len3d(x0,y0,z0,x1,y1,z1)
+  return math.sqrt( (x0-x1)*(x0-x1) + (y0-y1)*(y0-y1) + (z0-z1)*(z0-z1) )
+end
+
+
 function int(x)
   if not x then
     return 0

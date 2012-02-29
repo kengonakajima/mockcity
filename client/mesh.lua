@@ -303,7 +303,7 @@ function makeSquareBoardMesh(deck,index)
   ib:setIndex( 6, 3 )
   
   vb:bless()
-  return makeMesh( baseDeck, vb, ib, MOAIMesh.GL_TRIANGLES )
+  return makeMesh( deck, vb, ib, MOAIMesh.GL_TRIANGLES )
 end
 
 function makeTriangleMesh(w)
