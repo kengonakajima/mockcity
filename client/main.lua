@@ -824,7 +824,7 @@ function setWorldLoc(x,z)
   if chars and prevScrollX ~= scrollX or prevScrollZ ~= scrollZ then    
     for i,v in ipairs(chars) do
       local x,y,z = v:getLoc()
-      v:setLoc( v.gridX * CELLUNITSZ + CELLUNITSZ/2 + scrollX, y, v.gridZ * CELLUNITSZ + CELLUNITSZ/2 + scrollZ )
+      v:setLoc( v.gridX * CELLUNITSZ + v.ofsX + scrollX, y , v.gridZ * CELLUNITSZ + v.ofsZ + scrollZ )
     end    
   end
   prevScrollX, prevScrollZ = scrollX,scrollZ
@@ -1153,7 +1153,7 @@ th:run(function()
       pollChunks( currentZoomLevel, -scrollX, -scrollZ)
 
       -- update chars
-      pollChars()
+      pollChars(t)
       
       -- cams and moves      
       local cx,cy,cz = camera:getLoc()
