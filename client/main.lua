@@ -216,27 +216,32 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
         for x=0,CHUNKSZ-1 do
           local ind = x + z*(CHUNKSZ+1)+1
           local t = showtdata[ind]
+          local h = showhdata[ind]
           if t == CELLTYPE.WOODDEPO then
             local lt = showtdata[ind-1]
             local rt = showtdata[ind+1]
             local ut = showtdata[ind-(CHUNKSZ+1)]
             local dt = showtdata[ind+(CHUNKSZ+1)]
-            if lt ~= t then table.insert( fenceary, {x,z,DIR.LEFT, 25 } ) end
-            if rt ~= t then table.insert( fenceary, {x,z,DIR.RIGHT, 25 } ) end
-            if dt ~= t then table.insert( fenceary, {x,z,DIR.DOWN, 25 } ) end
-            if ut ~= t then table.insert( fenceary, {x,z,DIR.UP, 25 } ) end
+            if lt ~= t then table.insert( fenceary, {x,h,z,DIR.LEFT, 25 } ) end
+            if rt ~= t then table.insert( fenceary, {x,h,z,DIR.RIGHT, 25 } ) end
+            if dt ~= t then table.insert( fenceary, {x,h,z,DIR.DOWN, 25 } ) end
+            if ut ~= t then table.insert( fenceary, {x,h,z,DIR.UP, 25 } ) end
           end
         end
       end      
       if #fenceary > 0 then
-        local fp = MOAIProp.new()
-        fieldLayer:insertProp(fp)
+        local fp = self.fencep
+        if not fp then
+          fp = MOAIProp.new()
+          self.fencep = fp
+          fieldLayer:insertProp(fp)
+          print("FFFFFFFFFFFFF:", #fenceary )
+        end
         local fm = makeMultiFenceMesh(fenceary,baseDeck)
         fp:setDeck(fm)
         fp:setColor(1,1,1,1)
         fp:setCullMode( MOAIProp.CULL_NONE ) -- because fences
         fp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
-        self.fencep = fp
 
       end
     end
@@ -570,7 +575,11 @@ function onKeyboardEvent(k,dn)
           p:setRot(0,0,0)
           charLayer:insertProp(p)
         end
-        
+      end
+      if k == 117 then --u
+        if lastControlX then
+          conn:emit("debugModifyLand", {x=lastControlX, z=lastControlZ, mod=1 } )
+        end
       end
      
     end

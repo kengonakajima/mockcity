@@ -349,9 +349,9 @@ function makeMultiFenceMesh(ary,deck)
   local l,h = 16,16
   local dIndex = 0
   for i,v in ipairs(ary) do
-    local x,z,facedir,ind = unpack(v)
+    local x,y,z,facedir,ind = unpack(v)
     local faceZ = false
-    local dx,dz = x * CELLUNITSZ, z * CELLUNITSZ
+    local dx,dy,dz = x * CELLUNITSZ, y*CELLUNITSZ, z * CELLUNITSZ
     if facedir == DIR.DOWN then
       faceZ = true
       dz = dz + l
@@ -365,17 +365,17 @@ function makeMultiFenceMesh(ary,deck)
     end
     
     local u1,v1,u2,v2 = tileIndexToUVEpsilon( ind )
-    
+    print("DY:",dy,y)
     if faceZ then
-      vb:pushVert( dx-l,h,dz, u1,v1 ) -- A
-      vb:pushVert( dx+l,h,dz, u2,v1 ) -- B
-      vb:pushVert( dx+l,0,dz, u2,v2) --C
-      vb:pushVert( dx-l,0,dz, u1,v2 ) -- D
+      vb:pushVert( dx-l,dy+h,dz, u1,v1 ) -- A
+      vb:pushVert( dx+l,dy+h,dz, u2,v1 ) -- B
+      vb:pushVert( dx+l,dy,dz, u2,v2) --C
+      vb:pushVert( dx-l,dy,dz, u1,v2 ) -- D
     else
-      vb:pushVert(dx,h,dz+l, u1,v1 ) -- A
-      vb:pushVert(dx,h,dz-l, u2,v1 ) -- B
-      vb:pushVert(dx,0,dz-l, u2,v2 ) -- C
-      vb:pushVert(dx,0,dz+l, u1,v2 ) -- D
+      vb:pushVert(dx,dy+h,dz+l, u1,v1 ) -- A
+      vb:pushVert(dx,dy+h,dz-l, u2,v1 ) -- B
+      vb:pushVert(dx,dy,dz-l, u2,v2 ) -- C
+      vb:pushVert(dx,dy,dz+l, u1,v2 ) -- D
     end
     ib:pushIndexes( { 1,3,2,   1,4,3 }, dIndex )
     dIndex = dIndex + 4
