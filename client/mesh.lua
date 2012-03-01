@@ -25,6 +25,11 @@ end
 function makeIndexBuffer(nIndex)
   local ib = MOAIIndexBuffer.new()
   ib:reserve( nIndex )
+  ib.cnt = 1
+  function ib:pushIndex(ind)
+    self:setIndex(self.cnt,ind)
+    self.cnt = self.cnt + 1
+  end 
   return ib
 end
 
@@ -158,28 +163,27 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
           vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,1,1 )  -- C
           vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,1,1 ) -- D
           -- A-B
-          ib:setIndex( indexCnt, 1 + baseVertOffset )
-          ib:setIndex( indexCnt+1, 2 + baseVertOffset )
+          ib:pushIndex( 1 + baseVertOffset )
+          ib:pushIndex( 2 + baseVertOffset )
           -- B-C
-          ib:setIndex( indexCnt+2, 2 + baseVertOffset )
-          ib:setIndex( indexCnt+3, 3 + baseVertOffset )
+          ib:pushIndex( 2 + baseVertOffset )
+          ib:pushIndex( 3 + baseVertOffset )
           if normalDiv then
             -- C-A
-            ib:setIndex( indexCnt+4, 3 + baseVertOffset )
-            ib:setIndex( indexCnt+5, 1 + baseVertOffset )
+            ib:pushIndex( 3 + baseVertOffset )
+            ib:pushIndex( 1 + baseVertOffset )            
           else
             -- D-B
-            ib:setIndex( indexCnt+4, 2 + baseVertOffset )
-            ib:setIndex( indexCnt+5, 4 + baseVertOffset )          
+            ib:pushIndex( 2 + baseVertOffset )
+            ib:pushIndex( 4 + baseVertOffset )                      
           end        
           -- A-D
-          ib:setIndex( indexCnt+6, 1 + baseVertOffset )
-          ib:setIndex( indexCnt+7, 4 + baseVertOffset )
+          ib:pushIndex( 1 + baseVertOffset )
+          ib:pushIndex( 4 + baseVertOffset )          
           -- D-C
-          ib:setIndex( indexCnt+8, 4 + baseVertOffset )
-          ib:setIndex( indexCnt+9, 3 + baseVertOffset )
+          ib:pushIndex( 4 + baseVertOffset )
+          ib:pushIndex( 3 + baseVertOffset )
 
-          indexCnt = indexCnt + 10
           cellCnt = cellCnt + 1
         end        
       else
@@ -260,15 +264,14 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
         end
 
         -- 左側の三角形
-        ib:setIndex( indexCnt, 4 + baseVertOffset )
-        ib:setIndex( indexCnt+1, 6 + baseVertOffset )
-        ib:setIndex( indexCnt+2, 5 + baseVertOffset )
+        ib:pushIndex( 4 + baseVertOffset )
+        ib:pushIndex( 6 + baseVertOffset )
+        ib:pushIndex( 5 + baseVertOffset )        
         -- 右側の三角形
-        ib:setIndex( indexCnt+3, 1 + baseVertOffset )
-        ib:setIndex( indexCnt+4, 3 + baseVertOffset )
-        ib:setIndex( indexCnt+5, 2 + baseVertOffset )
+        ib:pushIndex( 1 + baseVertOffset )
+        ib:pushIndex( 3 + baseVertOffset )
+        ib:pushIndex( 2 + baseVertOffset )        
 
-        indexCnt = indexCnt + 6
         cellCnt = cellCnt + 1
       end      
     end
@@ -285,7 +288,7 @@ end
 -- boardなので、 垂直に立っているmesh. z=0
 function makeSquareBoardMesh(deck,index)
   local vb = makeVertexBuffer( 4 )
-  local ib = makeIndexBuffer( 2 * 3 )
+  local ib = makeIndexBuffer( 2 * 3 ) -- 2 tris
   -- A-B
   -- |\|
   -- D-C
@@ -295,12 +298,12 @@ function makeSquareBoardMesh(deck,index)
   vb:pushVert( 16, -16, 0,   u+DECKSTEP,v+DECKSTEP ) -- C
   vb:pushVert( -16, -16, 0,  u, v+DECKSTEP ) --D
   -- ABC
-  ib:setIndex( 1, 1 )
-  ib:setIndex( 2, 3 )
-  ib:setIndex( 3, 2 )
-  ib:setIndex( 4, 1 )
-  ib:setIndex( 5, 4 )
-  ib:setIndex( 6, 3 )
+  ib:pushIndex( 1 )
+  ib:pushIndex( 3 )
+  ib:pushIndex( 2 )
+  ib:pushIndex( 1 )
+  ib:pushIndex( 4 )
+  ib:pushIndex( 3 )
   
   vb:bless()
   return makeMesh( deck, vb, ib, MOAIMesh.GL_TRIANGLES )
@@ -361,4 +364,40 @@ function makeTriangleMesh(w)
   mesh:setPrimType ( MOAIMesh.GL_TRIANGLES )
 
   return mesh
+end
+
+
+-- make a saured fence,
+--    w
+-- A-----B
+-- |  \  | h
+-- D-----C
+--
+-- facing
+--       up
+--       +-+  
+--  left | |  right
+--       +-+
+--      down
+function makeFenceMesh(w,h, indv,indi)
+  
+end
+
+
+-- { { x,y,facedir,ind }, {x,y,facedir,ind}, ... }
+--
+--   0  1  2
+--  0+---+---+-..
+--   |0,0|1,0|
+--  1+---+---+-..
+--   |0,1|1,1|
+--   .   .   .
+function makeMultiFenceMesh(ary,deck)
+  local n = #ary 
+  local vb = makeVertexBuffer( n * 4 )
+  local ib = makeIndexBuffer( n * 2 * 3 ) -- 2 tris
+  for i,v in ipairs(ary) do
+    local x,y,facedir,ind = unpack(v)
+    local u,v = tileIndexToUV( v.ind )
+  end  
 end

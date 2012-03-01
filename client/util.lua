@@ -1,5 +1,8 @@
 -- util
 
+DIR = { UP=0,RIGHT=1,DOWN=2,LEFT=3 }
+
+
 function b2i(b)
   if b then return 1 else return 0 end
 end
