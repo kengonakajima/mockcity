@@ -81,6 +81,10 @@ end
 function range(a,b)
   return a + ( b-a ) * math.random()
 end
+function irange(a,b)
+  return int( range(a,b) )
+end
+
 
 function avg(a,b)
   return (a+b)/2

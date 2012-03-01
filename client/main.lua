@@ -501,7 +501,7 @@ function onKeyboardEvent(k,dn)
       if k == 108 then --l
         if lastControlX then
           print("putting char:", charDeck )
-          local n = 10
+          local n = 1
           for xx=1,n do
             for zz=1,n do
               local ind = 1
@@ -511,8 +511,7 @@ function onKeyboardEvent(k,dn)
               print("at:", lastControlX+xx, lastControlZ + zz )
               local ch =   makeChar(lastControlX + xx,lastControlZ + zz, charDeck, ind )
               if ch then
-                ch:setLoc( cursorProp:getLoc() )
-                ch:setState(CHARSTATE.WALK)
+                ch:setState(CHARSTATE.STAND)
               end
             end
           end          
@@ -822,11 +821,13 @@ function setWorldLoc(x,z)
         ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
       end)
   end
-  if chars then
+  if chars and prevScrollX ~= scrollX or prevScrollZ ~= scrollZ then    
     for i,v in ipairs(chars) do
-      v:setLoc( v.gridX * CELLUNITSZ + CELLUNITSZ/2 + scrollX, v.gridY * CELLUNITSZ, v.gridZ * CELLUNITSZ + CELLUNITSZ/2 + scrollZ )
+      local x,y,z = v:getLoc()
+      v:setLoc( v.gridX * CELLUNITSZ + CELLUNITSZ/2 + scrollX, y, v.gridZ * CELLUNITSZ + CELLUNITSZ/2 + scrollZ )
     end    
-  end  
+  end
+  prevScrollX, prevScrollZ = scrollX,scrollZ
 end
 function updateWorldLoc()
   if seekerProp then

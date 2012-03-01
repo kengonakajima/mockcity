@@ -30,13 +30,14 @@ function makeChar(x,z,deck,index)
     if not xx then return end
     local h = getFieldHeight(x,z)
     assert(h)
-    self.gridX, self.gridY, self.gridZ = x,h,z    
-    xx,yy,zz =  xx+CELLUNITSZ/2, yy+CELLUNITSZ/2-5, zz+CELLUNITSZ/2
+    xx,yy,zz =  xx+CELLUNITSZ/2, yy+CELLUNITSZ/2-5, zz+CELLUNITSZ/2 
     if not self.gridX then
       self:setLoc(xx,yy,zz)
-    end    
-    self:seekLoc(xx,yy,zz, 0.5 )
-
+    else
+      self:seekLoc(xx,yy,zz, 0.3 )
+    end
+    self.gridX, self.gridY, self.gridZ = x,h,z    
+    
   end
 
   function ch:poll()
@@ -55,6 +56,16 @@ function makeChar(x,z,deck,index)
       ch:setDeck(mesh)            
     end
 
+    -- debug move
+    if self.cnt % 100 == 0 then
+      local nx,nz = self.gridX, self.gridZ
+      if birandom() then
+        nx,nz = self.gridX + choose({-1,1}), self.gridZ
+      else
+        nx,nz = self.gridX, self.gridZ + choose({-1,1})
+      end
+      self:moveToGrid(nx,nz)
+    end
 
   end
   
@@ -67,7 +78,8 @@ end
 
 function pollChars()
   for i,v in ipairs(chars) do
-    v:poll()    
+    v:poll()
+    print( "ch:", v:getLoc())
   end
   
 end
