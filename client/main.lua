@@ -46,19 +46,19 @@ math.randomseed(1)
 
 MOAISim.openWindow ( "test", SCRW, SCRH )
 MOAIGfxDevice.setClearDepth ( true )
-
+MOAIGfxDevice.setClearDepth ( true )
 viewport = MOAIViewport.new ()
 viewport:setSize ( SCRW, SCRH )
 viewport:setScale ( SCRW, SCRH )
 
 fieldLayer = MOAILayer.new()
 fieldLayer:setViewport(viewport)
-fieldLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
+fieldLayer:setSortMode(MOAILayer.SORT_Z_ASCNDING ) -- don't need layer sort
 MOAISim.pushRenderPass(fieldLayer)
 
 charLayer = MOAILayer.new()
 charLayer:setViewport(viewport)
-charLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING )
+charLayer:setSortMode(MOAILayer.SORT_Z_ASCNDING )
 MOAISim.pushRenderPass(charLayer)
 
 cursorLayer = MOAILayer.new()
@@ -211,6 +211,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 
     -- objs(fence,tree,building..)
     local objary = {}
+    
     if not editmode and zoomlevel == 1 then
       for z=0,CHUNKSZ-1 do
         for x=0,CHUNKSZ-1 do
@@ -222,27 +223,34 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
             local rt = showtdata[ind+1]
             local ut = showtdata[ind-(CHUNKSZ+1)]
             local dt = showtdata[ind+(CHUNKSZ+1)]
-            if lt ~= t then table.insert( objary, {x,h,z,DIR.LEFT, 25 } ) end
-            if rt ~= t then table.insert( objary, {x,h,z,DIR.RIGHT, 25 } ) end
-            if dt ~= t then table.insert( objary, {x,h,z,DIR.DOWN, 25 } ) end
-            if ut ~= t then table.insert( objary, {x,h,z,DIR.UP, 25 } ) end
+            if lt ~= t then table.insert( objary, {OBJMESHTYPE.FENCE, x,h,z,25,DIR.LEFT } ) end
+            if rt ~= t then table.insert( objary, {OBJMESHTYPE.FENCE, x,h,z,25,DIR.RIGHT } ) end
+            if dt ~= t then table.insert( objary, {OBJMESHTYPE.FENCE, x,h,z,25,DIR.DOWN } ) end
+            if ut ~= t then table.insert( objary, {OBJMESHTYPE.FENCE, x,h,z,25,DIR.UP } ) end
+
+            if range(0,100)>50 then
+              table.insert( objary, { OBJMESHTYPE.BOARD, x,h,z, 26 } )
+            end            
           end
         end
-      end      
+      end
       if #objary > 0 then
-        local fp = self.objp
-        if not fp then
-          fp = MOAIProp.new()
-          self.objp = fp
-          fieldLayer:insertProp(fp)
+        table.sort( objary, function(a,b) return a[1] < b[1] end ) -- sort by meshtype
+        
+        local p = self.objp
+        if not p then
+          p = MOAIProp.new()
+          self.objp = p
+          fieldLayer:insertProp(p)
           print("FFFFFFFFFFFFF:", #objary )
         end
         local fm = makeMultiObjMesh(objary,baseDeck)
-        fp:setDeck(fm)
-        fp:setColor(1,1,1,1)
-        fp:setCullMode( MOAIProp.CULL_NONE )
-        fp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
+        p:setDeck(fm)
 
+        p:setColor(1,1,1,1)
+        p:setCullMode( MOAIProp.CULL_NONE )
+--        p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
+        p:setDepthTest(MOAIProp.DEPTH_TEST_DISABLE )
       end
     end
     

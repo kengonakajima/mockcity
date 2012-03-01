@@ -342,6 +342,11 @@ end
 --       +-+
 --      down
 
+OBJMESHTYPE = {
+  FENCE=1, -- vert:4 index:6, support 4 direction
+  BOARD=2 -- vert:4 index:6, only front face
+}
+  
 function makeMultiObjMesh(ary,deck)
   local n = #ary 
   local vb = makeVertexBuffer( n * 4 )
@@ -349,36 +354,50 @@ function makeMultiObjMesh(ary,deck)
   local l,h = 16,16
   local dIndex = 0
   for i,v in ipairs(ary) do
-    local x,y,z,facedir,ind = unpack(v)
-    local faceZ = false
+    local t,x,y,z,ind,facedir = unpack(v)
     local dx,dy,dz = x * CELLUNITSZ, y*CELLUNITSZ, z * CELLUNITSZ
-    if facedir == DIR.DOWN then
-      faceZ = true
-      dz = dz + l
-    elseif facedir == DIR.UP then
-      faceZ = true
-      dz = dz - l
-    elseif facedir == DIR.LEFT then
-      dx = dx - l
-    elseif facedir == DIR.RIGHT then
-      dx = dx + l
-    end
-    
     local u1,v1,u2,v2 = tileIndexToUVEpsilon( ind )
-    print("DY:",dy,y)
-    if faceZ then
-      vb:pushVert( dx-l,dy+h,dz, u1,v1 ) -- A
-      vb:pushVert( dx+l,dy+h,dz, u2,v1 ) -- B
-      vb:pushVert( dx+l,dy,dz, u2,v2) --C
-      vb:pushVert( dx-l,dy,dz, u1,v2 ) -- D
-    else
-      vb:pushVert(dx,dy+h,dz+l, u1,v1 ) -- A
-      vb:pushVert(dx,dy+h,dz-l, u2,v1 ) -- B
-      vb:pushVert(dx,dy,dz-l, u2,v2 ) -- C
-      vb:pushVert(dx,dy,dz+l, u1,v2 ) -- D
+    
+    if t == OBJMESHTYPE.FENCE then
+      print("FENCE!",x,z)
+      local faceZ = false
+      if facedir == DIR.DOWN then
+        faceZ = true
+        dz = dz + l
+      elseif facedir == DIR.UP then
+        faceZ = true
+        dz = dz - l
+      elseif facedir == DIR.LEFT then
+        dx = dx - l
+      elseif facedir == DIR.RIGHT then
+        dx = dx + l
+      end
+      if faceZ then
+        vb:pushVert( dx-l,dy+h,dz, u1,v1 ) -- A
+        vb:pushVert( dx+l,dy+h,dz, u2,v1 ) -- B
+        vb:pushVert( dx+l,dy,dz, u2,v2) --C
+        vb:pushVert( dx-l,dy,dz, u1,v2 ) -- D
+      else
+        vb:pushVert(dx,dy+h,dz+l, u1,v1 ) -- A
+        vb:pushVert(dx,dy+h,dz-l, u2,v1 ) -- B
+        vb:pushVert(dx,dy,dz-l, u2,v2 ) -- C
+        vb:pushVert(dx,dy,dz+l, u1,v2 ) -- D
+      end
+      ib:pushIndexes( { 1,3,2,   1,4,3 }, dIndex )
+      dIndex = dIndex + 4
+    elseif t == OBJMESHTYPE.BOARD then
+      print("BOARD!",x,z)
+      vb:pushVert( dx-l,dy+h,dz-l, u1,v1 ) -- A
+      vb:pushVert( dx+l,dy+h,dz-l, u2,v1 ) -- B
+      vb:pushVert( dx+l,dy,dz+l/2, u2,v2) --C
+      vb:pushVert( dx-l,dy,dz+l/2, u1,v2 ) -- D
+--      vb:pushVert( dx-l,dy+CELLUNITSZ,dz,  u1,v1 )
+--      vb:pushVert( dx+l,dy+CELLUNITSZ,dz,  u2,v1 )
+--      vb:pushVert( dx+l,dy,dz+l, u2,v2)
+--      vb:pushVert( dx-l,dy,dz+l, u1,v2)
+      ib:pushIndexes( { 1,3,2,   1,4,3 }, dIndex )
+      dIndex = dIndex + 4
     end
-    ib:pushIndexes( { 1,3,2,   1,4,3 }, dIndex )
-    dIndex = dIndex + 4
   end
   vb:bless()
   return makeMesh(deck, vb, ib, MOAIMesh.GL_TRIANGLES )
