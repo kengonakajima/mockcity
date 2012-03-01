@@ -1,4 +1,6 @@
 -- 3D utils
+
+
 function getDefaultVertexFormat()
   local vf = MOAIVertexFormat.new()
   vf:declareCoord ( 1, MOAIVertexFormat.GL_FLOAT, 3 )
@@ -30,9 +32,10 @@ function makeIndexBuffer(nIndex)
     self:setIndex(self.cnt,ind)
     self.cnt = self.cnt + 1
   end
-  function ib:pushIndexes(t)
+  function ib:pushIndexes(t,d)
+    if not d then d = 0 end
     for i,v in ipairs(t) do
-      self:pushIndex(v)
+      self:pushIndex(v+d)
     end
   end
   
@@ -53,10 +56,18 @@ end
 
 DECKDIV = 8
 DECKSTEP = 1/DECKDIV
+
 function tileIndexToUV(ind)
   local x = (ind-1) % DECKDIV
   local y = math.floor( (ind-1) / DECKDIV )
   return x * DECKSTEP, y * DECKSTEP
+end
+
+UVEPSILON = 0.001
+function tileIndexToUVEpsilon(ind)
+  local u1,v1 = tileIndexToUV(ind)
+  local u2,v2 = tileIndexToUV(ind+8+1)
+  return u1+UVEPSILON,v1+UVEPSILON,u2-UVEPSILON,v2-UVEPSILON
 end
 
 -- w,h : N=4だったら 頂点が4、 セルは3。
@@ -294,11 +305,11 @@ function makeSquareBoardMesh(deck,index)
   -- A-B
   -- |\|
   -- D-C
-  local u,v = tileIndexToUV(index)
-  vb:pushVert( -16, 16, 0,   u,v ) -- A
-  vb:pushVert( 16, 16, 0,    u+DECKSTEP,v ) -- B
-  vb:pushVert( 16, -16, 0,   u+DECKSTEP,v+DECKSTEP ) -- C
-  vb:pushVert( -16, -16, 0,  u, v+DECKSTEP ) --D
+  local u1,v1,u2,v2 = tileIndexToUVEpsilon(index)
+  vb:pushVert( -16, 16, 0,   u1,v1 ) -- A
+  vb:pushVert( 16, 16, 0,    u2,v1 ) -- B
+  vb:pushVert( 16, -16, 0,   u2,v2 ) -- C
+  vb:pushVert( -16, -16, 0,  u1, v2 ) --D
   -- ABC
   ib:pushIndexes( {1,3,2,  1,4,3} )
   
@@ -307,7 +318,18 @@ function makeSquareBoardMesh(deck,index)
 end
 
 
--- make a saured fence,
+
+
+-- { { x,z,facedir,ind }, {x,z,facedir,ind}, ... }
+--
+--   0  1  2
+--  0+---+---+-..
+--   |0,0|1,0|
+--  1+---+---+-..
+--   |0,1|1,1|
+--   .   .   .
+--
+--
 --    w
 -- A-----B
 -- |  \  | h
@@ -319,25 +341,47 @@ end
 --  left | |  right
 --       +-+
 --      down
-function makeFenceMesh(w,h, indv,indi)
-  
-end
 
-
--- { { x,y,facedir,ind }, {x,y,facedir,ind}, ... }
---
---   0  1  2
---  0+---+---+-..
---   |0,0|1,0|
---  1+---+---+-..
---   |0,1|1,1|
---   .   .   .
 function makeMultiFenceMesh(ary,deck)
   local n = #ary 
   local vb = makeVertexBuffer( n * 4 )
   local ib = makeIndexBuffer( n * 2 * 3 ) -- 2 tris
+  local l,h = 16,16
+  local dIndex = 0
   for i,v in ipairs(ary) do
-    local x,y,facedir,ind = unpack(v)
-    local u,v = tileIndexToUV( v.ind )
-  end  
+    local x,z,facedir,ind = unpack(v)
+    local faceZ = false
+    local dx,dz = x * CELLUNITSZ, z * CELLUNITSZ
+    if facedir == DIR.DOWN then
+      faceZ = true
+      dz = dz + l
+    elseif facedir == DIR.UP then
+      faceZ = true
+      dz = dz - l
+    elseif facedir == DIR.LEFT then
+      dx = dx - l
+    elseif facedir == DIR.RIGHT then
+      dx = dx + l
+    end
+    
+    local u1,v1,u2,v2 = tileIndexToUVEpsilon( ind )
+    
+    if faceZ then
+      vb:pushVert( dx-l,h,dz, u1,v1 ) -- A
+      vb:pushVert( dx+l,h,dz, u2,v1 ) -- B
+      vb:pushVert( dx+l,0,dz, u2,v2) --C
+      vb:pushVert( dx-l,0,dz, u1,v2 ) -- D
+    else
+      vb:pushVert(dx,h,dz+l, u1,v1 ) -- A
+      vb:pushVert(dx,h,dz-l, u2,v1 ) -- B
+      vb:pushVert(dx,0,dz-l, u2,v2 ) -- C
+      vb:pushVert(dx,0,dz+l, u1,v2 ) -- D
+    end
+    ib:pushIndexes( { 1,3,2,   1,4,3 }, dIndex )
+    dIndex = dIndex + 4
+  end
+  vb:bless()
+  return makeMesh(deck, vb, ib, MOAIMesh.GL_TRIANGLES )
 end
+
+

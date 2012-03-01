@@ -4,5 +4,6 @@ CELLTYPE={
   GRASS = 2,
   SAND = 3,
   WATER = 4,
+  WOODDEPO = 7,
   WHITE = 17
 }
