@@ -284,6 +284,19 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   return p
 end
 
+function getFieldCellCenterLog(x,z,lookatmock)
+  local lth,rbh
+  if lookatmock then
+    lth = getFieldMockHeight(x,z)
+    rbh = getFieldMockHeight(x+1,z+1)
+  else
+    lth = getFieldHeight(x,z)
+    rbh = getFieldHeight(x+1,z+1)
+  end
+  if not lth or not rbh then return nil end
+  return x * CELLUNITSZ + CELLUNITSZ/2 + scrollX, avg(lth,rbh) * CELLUNITSZ, z * CELLUNITSZ + CELLUNITSZ/2 + scrollZ  
+end
+
 function getFieldGridLoc(x,z,lookatmock)
   local h
   if lookatmock then
@@ -500,25 +513,13 @@ function onKeyboardEvent(k,dn)
     else
       if k == 108 then --l
         if lastControlX then
-          print("putting char:", charDeck )
-          local n = 1
-          for xx=1,n do
-            for zz=1,n do
-              local ind = 1
-              if range(0,100) > 10 then
-                ind = 34
-              end
-              print("at:", lastControlX+xx, lastControlZ + zz )
-              local ch =   makeChar(lastControlX + xx,lastControlZ + zz, charDeck, ind )
-              if ch then
-                ch:setState(CHARSTATE.STAND)
-              end
-            end
-          end          
+          local ch =  makeChar(lastControlX,lastControlZ, charDeck, 1 )
         end        
       end
       if k == 109 then --m
-
+        if lastControlX then
+          local ch =   makeChar(lastControlX,lastControlZ, charDeck, 34 )
+        end        
       end
       if k == 110 then --n
 --        chunkTable:dump()
@@ -823,8 +824,7 @@ function setWorldLoc(x,z)
   end
   if chars and prevScrollX ~= scrollX or prevScrollZ ~= scrollZ then    
     for i,v in ipairs(chars) do
-      local x,y,z = v:getLoc()
-      v:setLoc( v.gridX * CELLUNITSZ + v.ofsX + scrollX, y , v.gridZ * CELLUNITSZ + v.ofsZ + scrollZ )
+      v:updateLoc(scrollX,scrollZ)
     end    
   end
   prevScrollX, prevScrollZ = scrollX,scrollZ
