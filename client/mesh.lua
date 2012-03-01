@@ -29,7 +29,13 @@ function makeIndexBuffer(nIndex)
   function ib:pushIndex(ind)
     self:setIndex(self.cnt,ind)
     self.cnt = self.cnt + 1
-  end 
+  end
+  function ib:pushIndexes(t)
+    for i,v in ipairs(t) do
+      self:pushIndex(v)
+    end
+  end
+  
   return ib
 end
 
@@ -264,13 +270,9 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
         end
 
         -- 左側の三角形
-        ib:pushIndex( 4 + baseVertOffset )
-        ib:pushIndex( 6 + baseVertOffset )
-        ib:pushIndex( 5 + baseVertOffset )        
+        ib:pushIndexes( { 4 + baseVertOffset, 6 + baseVertOffset, 5 + baseVertOffset } )
         -- 右側の三角形
-        ib:pushIndex( 1 + baseVertOffset )
-        ib:pushIndex( 3 + baseVertOffset )
-        ib:pushIndex( 2 + baseVertOffset )        
+        ib:pushIndexes( { 1 + baseVertOffset, 3 + baseVertOffset, 2 + baseVertOffset } )
 
         cellCnt = cellCnt + 1
       end      
@@ -298,72 +300,10 @@ function makeSquareBoardMesh(deck,index)
   vb:pushVert( 16, -16, 0,   u+DECKSTEP,v+DECKSTEP ) -- C
   vb:pushVert( -16, -16, 0,  u, v+DECKSTEP ) --D
   -- ABC
-  ib:pushIndex( 1 )
-  ib:pushIndex( 3 )
-  ib:pushIndex( 2 )
-  ib:pushIndex( 1 )
-  ib:pushIndex( 4 )
-  ib:pushIndex( 3 )
+  ib:pushIndexes( {1,3,2,  1,4,3} )
   
   vb:bless()
   return makeMesh( deck, vb, ib, MOAIMesh.GL_TRIANGLES )
-end
-
-function makeTriangleMesh(w)
-  local vertexFormat = MOAIVertexFormat.new ()
-
-  vertexFormat:declareCoord ( 1, MOAIVertexFormat.GL_FLOAT, 3 )
-  vertexFormat:declareUV ( 2, MOAIVertexFormat.GL_FLOAT, 2 )
-  vertexFormat:declareColor ( 3, MOAIVertexFormat.GL_UNSIGNED_BYTE )
-
-  local vbo = MOAIVertexBuffer.new ()
-  vbo:setFormat ( vertexFormat )
-  vbo:reserveVerts ( 4 )
-
-  -- 1: left front (-x,0,-z)
-  vbo:writeFloat ( -w, 0, -w )
-  vbo:writeFloat ( 0, 1 )
-  vbo:writeColor32 ( 0, 1, 1 )
-
-  -- 2: right front (x,0,-z)
-  vbo:writeFloat ( w, 0, -w )
-  vbo:writeFloat ( 1, 1 )
-  vbo:writeColor32 ( 1, 0, 1 )
-
-  -- 3: right back (x,0,z)
-  vbo:writeFloat ( w, 0, w )
-  vbo:writeFloat ( 1, 0 )
-  vbo:writeColor32 ( 0, 1, 0 )
-
-  -- 4: left back ( -x,0,z)
-  vbo:writeFloat ( -w, 0, w )
-  vbo:writeFloat ( 0, 0 )
-  vbo:writeColor32 ( 1, 0, 0 )
-
-  vbo:bless ()
-
-
-  local ibo = MOAIIndexBuffer.new ()
-  ibo:reserve ( 6 )
-
-  -- left
-  ibo:setIndex ( 1, 2 )
-  ibo:setIndex ( 2, 1 )
-  ibo:setIndex ( 3, 4 )
-
-  -- right
-  ibo:setIndex ( 4, 2 )
-  ibo:setIndex ( 5, 4 )
-  ibo:setIndex ( 6, 3 )
-
-
-  local mesh = MOAIMesh.new ()
-  mesh:setTexture ( baseDeck ) --"white.png" )
-  mesh:setVertexBuffer ( vbo )
-  mesh:setIndexBuffer ( ibo )
-  mesh:setPrimType ( MOAIMesh.GL_TRIANGLES )
-
-  return mesh
 end
 
 
