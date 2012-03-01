@@ -209,8 +209,8 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
       if self.mockp then self.mockp:setDeck(nil) end
     end
 
-    -- fences
-    local fenceary = {}
+    -- objs(fence,tree,building..)
+    local objary = {}
     if not editmode and zoomlevel == 1 then
       for z=0,CHUNKSZ-1 do
         for x=0,CHUNKSZ-1 do
@@ -222,25 +222,25 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
             local rt = showtdata[ind+1]
             local ut = showtdata[ind-(CHUNKSZ+1)]
             local dt = showtdata[ind+(CHUNKSZ+1)]
-            if lt ~= t then table.insert( fenceary, {x,h,z,DIR.LEFT, 25 } ) end
-            if rt ~= t then table.insert( fenceary, {x,h,z,DIR.RIGHT, 25 } ) end
-            if dt ~= t then table.insert( fenceary, {x,h,z,DIR.DOWN, 25 } ) end
-            if ut ~= t then table.insert( fenceary, {x,h,z,DIR.UP, 25 } ) end
+            if lt ~= t then table.insert( objary, {x,h,z,DIR.LEFT, 25 } ) end
+            if rt ~= t then table.insert( objary, {x,h,z,DIR.RIGHT, 25 } ) end
+            if dt ~= t then table.insert( objary, {x,h,z,DIR.DOWN, 25 } ) end
+            if ut ~= t then table.insert( objary, {x,h,z,DIR.UP, 25 } ) end
           end
         end
       end      
-      if #fenceary > 0 then
-        local fp = self.fencep
+      if #objary > 0 then
+        local fp = self.objp
         if not fp then
           fp = MOAIProp.new()
-          self.fencep = fp
+          self.objp = fp
           fieldLayer:insertProp(fp)
-          print("FFFFFFFFFFFFF:", #fenceary )
+          print("FFFFFFFFFFFFF:", #objary )
         end
-        local fm = makeMultiFenceMesh(fenceary,baseDeck)
+        local fm = makeMultiObjMesh(objary,baseDeck)
         fp:setDeck(fm)
         fp:setColor(1,1,1,1)
-        fp:setCullMode( MOAIProp.CULL_NONE ) -- because fences
+        fp:setCullMode( MOAIProp.CULL_NONE )
         fp:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
 
       end
@@ -276,7 +276,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   local origsetloc = p.setLoc
   function p:setLoc(x,y,z)
     if self.mockp then self.mockp:setLoc(x,y+1,z) end
-    if self.fencep then self.fencep:setLoc(x+CELLUNITSZ/2,y,z+CELLUNITSZ/2) end
+    if self.objp then self.objp:setLoc(x+CELLUNITSZ/2,y,z+CELLUNITSZ/2) end
     origsetloc(self,x,y,z)
   end
 
@@ -306,7 +306,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   function p:clean()
 --    print("chunk clean:",self.zoomLevel,self.vx,self.vz)
     if self.mockp then fieldLayer:removeProp(self.mockp) end
-    if self.fencep then fieldLayer:removeProp(self.fencep) end
+    if self.objp then fieldLayer:removeProp(self.objp) end
     fieldLayer:removeProp(self)
     chunkTable:remove( self.zoomLevel, int(self.vx/CHUNKSZ/self.zoomLevel), int(self.vz/CHUNKSZ/self.zoomLevel) )
   end
@@ -558,22 +558,12 @@ function onKeyboardEvent(k,dn)
       if k == 109 then --m
         if lastControlX then
           conn:emit( "debugSetCellType", { x=lastControlX,z=lastControlZ,t= CELLTYPE.WOODDEPO } )
---          local ch =   makeChar(lastControlX,lastControlZ, charDeck, 34 )
+
         end        
       end
       if k == 110 then --n
         if lastControlX then
-          local t = { {0,0,DIR.DOWN,25}, {1,0,DIR.UP,25}, { 0,0,DIR.UP,25}, {0,0,DIR.LEFT,25},{0,0,DIR.RIGHT,25} }
-          local m = makeMultiFenceMesh( t, baseDeck )
---          local m = makeSquareBoardMesh( baseDeck, 2 )
-          local p = MOAIProp.new()
-          p:setDeck(m)
-
-          print( "cursorpos:", cursorProp:getLoc() )
-          p:setLoc( lastControlX*CELLUNITSZ + scrollX + CELLUNITSZ/2, 0, lastControlZ * CELLUNITSZ + scrollZ + CELLUNITSZ/2 )
-          p:setScl(1,1,1)
-          p:setRot(0,0,0)
-          charLayer:insertProp(p)
+          local ch =   makeChar(lastControlX,lastControlZ, charDeck, 34 )
         end
       end
       if k == 117 then --u

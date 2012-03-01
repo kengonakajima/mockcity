@@ -342,7 +342,7 @@ end
 --       +-+
 --      down
 
-function makeMultiFenceMesh(ary,deck)
+function makeMultiObjMesh(ary,deck)
   local n = #ary 
   local vb = makeVertexBuffer( n * 4 )
   local ib = makeIndexBuffer( n * 2 * 3 ) -- 2 tris
