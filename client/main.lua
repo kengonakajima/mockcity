@@ -954,7 +954,7 @@ end
 camera = MOAICamera3D.new ()
 local z = camera:getFocalLength ( SCRW )
 camera:setFarPlane( ZOOM_MAXY*2 )
---camera:setNearPlane(1)
+camera:setNearPlane( 20 ) -- for precision
 camera:setLoc ( 0, ZOOM_MINY, 800 )
 camera.flyUp = false
 
@@ -1267,9 +1267,9 @@ th:run(function()
           dcamy = lastdcamy
         end
         
-        if lastPointerX then 
+        if lastPointerX then
           local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
-                  print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
+--          print(string.format( "pointer:  %.4f,%.4f,%.4f  %d,%d  %.4f,%.4f,%.4f  %.4f,%.4f,%.4f", xn,yn,zn, lastPointerX, lastPointerY, camx,camy,camz, px,py,pz ))
           local editmode = guiSelectedButton and guiSelectedButton.editMode
 
           --        local st = os.clock()
