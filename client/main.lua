@@ -46,7 +46,7 @@ math.randomseed(1)
 
 MOAISim.openWindow ( "test", SCRW, SCRH )
 MOAIGfxDevice.setClearDepth ( true )
-MOAIGfxDevice.setClearDepth ( true )
+
 viewport = MOAIViewport.new ()
 viewport:setSize ( SCRW, SCRH )
 viewport:setScale ( SCRW, SCRH )
@@ -84,9 +84,6 @@ guiDeck = loadTileDeck2( "./images/guibase.png", 8,8, 32, 256,256, nil,true)
 baseDeck = loadTex( "./images/citybase.png" )
 cursorDeck = loadGfxQuad( "./images/cursor.png" )
 charDeck = loadTex( "./images/charbase.png" )
---charDeck2 = loadTileDeck2( "./images/charbase.png", 8,8,16,128,128,nil,true)
-
-scrollX, scrollZ = 0,0
 
 
 -- vx,vy : starts from zero, grid coord.
@@ -254,7 +251,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
       end
     end
     
-    self:setLoc( self.vx*CELLUNITSZ+scrollX, 0,self.vz*CELLUNITSZ+scrollZ )
+    self:setLoc( self.vx*CELLUNITSZ, 0,self.vz*CELLUNITSZ )
   end
 
   function p:dataIndex(modx,modz)
@@ -273,8 +270,6 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   end
       
   function p:toggleEditMode(mode)
-
-    print("toggleEditMode:",self.vx, self.vz, mode)
     if self.hdata then 
       self:updateHeightMap( mode )
     end    
@@ -341,7 +336,7 @@ function getFieldCellCenterLog(x,z,lookatmock)
     rbh = getFieldHeight(x+1,z+1)
   end
   if not lth or not rbh then return nil end
-  return x * CELLUNITSZ + CELLUNITSZ/2 + scrollX, avg(lth,rbh) * CELLUNITSZ, z * CELLUNITSZ + CELLUNITSZ/2 + scrollZ  
+  return x * CELLUNITSZ + CELLUNITSZ/2, avg(lth,rbh) * CELLUNITSZ, z * CELLUNITSZ + CELLUNITSZ/2
 end
 
 function getFieldGridLoc(x,z,lookatmock)
@@ -353,7 +348,7 @@ function getFieldGridLoc(x,z,lookatmock)
   end
   
   if h then
-    return x * CELLUNITSZ + scrollX, h*CELLUNITSZ, z * CELLUNITSZ + scrollZ
+    return x * CELLUNITSZ, h*CELLUNITSZ, z * CELLUNITSZ 
   else
     return nil
   end  
@@ -451,7 +446,7 @@ function initZoomSlider()
   local x,y = baseX, baseY
 
   zoomInButton = makeButton( "zoomIn", x,y, guiDeck, 17, byte("k"), function(self,x,y,down)
-      if down then camera:retargetYrate( 0.5 ) end
+      if down then camera:retargetYrate( 0.75 ) end
     end)
   zoomInButton.flippable = false
 
@@ -481,7 +476,7 @@ function initZoomSlider()
   end
   y = y - BUTTONSIZE
   zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("j"), function(self,x,y,down)
-      if down then camera:retargetYrate( 1.25 ) end
+      if down then camera:retargetYrate( 1.3 ) end
     end)
   zoomOutButton.flippable = false
 
@@ -683,7 +678,7 @@ function onMouseLeftEvent(down)
   -- move camera
   if guiSelectedButton == nil or dcamy > CURSOR_MAXY then
     print( "movecam", lastControlX, lastControlZ)
-    seekWorldLoc( - lastControlX * CELLUNITSZ, - lastControlZ * CELLUNITSZ, 0.5 )
+    seekWorldLoc( lastControlX * CELLUNITSZ, lastControlZ * CELLUNITSZ, 0.5 )
     return
   end
   -- edit on field, with cursor.  
@@ -828,7 +823,7 @@ function pollChunks(zoomlevel, centerx, centerz )
           -- check center of the chunk
           local gridx,gridz = chx * CHUNKSZ * zoomlevel, chz * CHUNKSZ * zoomlevel
 --          local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ
-          local x,y,z = gridx * CELLUNITSZ + scrollX, 0, gridz * CELLUNITSZ + scrollZ
+          local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ 
           local wx1,wy1 = fieldLayer:worldToWnd(x,y,z)
           local wx2,wy2 = fieldLayer:worldToWnd(x + CHUNKSZ*CELLUNITSZ*zoomlevel,y,z+CHUNKSZ*CELLUNITSZ*zoomlevel)
 --          print("aaa:",wx1,wy1,wx2,wy2)
@@ -860,36 +855,19 @@ function getFieldMockHeight(x,z)
 end
 
 function moveWorldLoc(dx,dz)
-  seekWorldLoc(scrollX + dx, scrollZ + dz, 0.1)
+  local x,y,z = camera:getLoc()
+  seekWorldLoc(x + dx, z + dz, 0.1)
 end
 function seekWorldLoc(x,z,second)
-  if not seekerProp then
-    seekerProp = MOAIProp.new()
-  end
---  seekerProp:setLoc(scrollX,0,scrollZ)
-  seekerProp:seekLoc(x,0,z, second, MOAIEaseType.LINEAR )
+  local _,y,_ = camera:getLoc()
+--  z = y * 0.4
+  camera:seekLoc(x,y,z, second, MOAIEaseType.LINEAR )
 end
 function setWorldLoc(x,z)
-  scrollX, scrollZ = x,z
-  seekerProp:setLoc(x,0,z)
-  if chunkTable then
-    chunkTable:scanAll( function(ch)
-        ch:setLoc(ch.vx * CELLUNITSZ + scrollX, 0, ch.vz * CELLUNITSZ + scrollZ )
-      end)
-  end
-  if chars and prevScrollX ~= scrollX or prevScrollZ ~= scrollZ then    
-    for i,v in ipairs(chars) do
-      v:updateLoc(scrollX,scrollZ)
-    end    
-  end
-  prevScrollX, prevScrollZ = scrollX,scrollZ
+  local _,y,_ = camera:getLoc()
+  z = z + y * 0.4
+  camera:setLoc(x,y,z)
 end
-function updateWorldLoc()
-  if seekerProp then
-    local x,y,z = seekerProp:getLoc()
-    setWorldLoc(x,z)
-  end
-end      
       
 
 function findChunkByCoord(chx1,chz1, chx2,chz2, cb)
@@ -921,7 +899,7 @@ end
 
 
 function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
-
+--  print("findFieldControlPoint: cam:",camx,camy,camz, " dir:", dirx,diry,dirz)
   local tgt = getFieldHeight
   if editmode then tgt = getFieldMockHeight end
     
@@ -938,17 +916,17 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
     if ix ~= previx or iz ~= previz then
       local h4s = getHeights4( tgt, ix,iz)
 
-      --  print("diffed.",ix,iz, h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom )
+--        print("diffed.",ix,iy,iz, "h4:", h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom )
       local ltY,rtY,rbY,lbY = h4s.leftTop * unit, h4s.rightTop * unit, h4s.rightBottom * unit, h4s.leftBottom * unit
       local ltX,ltZ = ix*unit, iz*unit
       local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rtY,ltZ), vec3(ltX+unit,rbY,ltZ+unit))
       if t then
---        print("HIT TRIANGLE RIGHT-UP. x,z:", ix,iz)
+--        print("HIT TRIANGLE RIGHT-UP. x,y,z:", ix,iy,iz)
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
       t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rbY,ltZ+unit), vec3(ltX,lbY,ltZ+unit))
       if t then
---        print("HIT TRIANGLE LEFT-DOWN. x,z:",ix,iz)
+--        print("HIT TRIANGLE LEFT-DOWN. x,y,z:",ix,iy,iz)
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
     end      
@@ -987,23 +965,31 @@ cursorLayer:setCamera ( camera )
 function camera:retargetYrate(yrate)
   local cx,cy,cz = camera:getLoc()
   local centerx,centery,centerz = getCameraCenterGrid()
-  if not centerx then return end
-  centery = centery * CELLUNITSZ
-  local dcamy = cy
-  if centery then
-    print("AHOAHOA:", centery )
+
+  local toY
+  
+  if not centerx then
+    toY = cy * 2
+  else
+    centery = centery * CELLUNITSZ
+    local dcamy = cy
+
     dcamy = cy - centery
     lastcentery = centery
-  elseif lastcentery then
-    dcamy = cy - lastcentery
+
+    if dcamy <= centery + ZOOM_MINY then
+      dcamy = centery + ZOOM_MINY
+    end
+    
+    print("dcamy:",dcamy, "cy:", cy, "center:", centerx, centery, centerz )
+  
+    if yrate > 1 then
+      toY = dcamy * yrate
+    elseif yrate < 1 then
+      toY = dcamy * yrate
+    end
   end
-  print("dcamy:",dcamy, "cy:", cy )
-  local toY
-  if yrate > 1 then
-    toY = cy + dcamy * yrate
-  elseif yrate < 1 then
-    toY = dcamy * yrate
-  end
+  
   camera:retargetY(toY)
 end
 function camera:retargetY(toY)  
@@ -1013,17 +999,16 @@ function camera:retargetY(toY)
   elseif toY > ZOOM_MAXY then
     toY = ZOOM_MAXY
   end
-  cz = toY * 0.4
---  camera:setLoc(cx,toY,cz)
+
   camera:seekLoc(cx,toY,cz,0.5)  
   if zoomSliderTab then zoomSliderTab:update(camera) end
-  moveWorldLoc(0,0)
+
 end
 
 function getCameraCenterGrid()
   local camx,camy,camz = camera:getLoc()  
   local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(SCRW/2,SCRH/2)
-  return findFieldControlPoint( editmode, camx-scrollX,camy,camz-scrollZ, xn,yn,zn)
+  return findFieldControlPoint( editmode, camx,camy,camz, xn,yn,zn)
 end
 
         
@@ -1157,7 +1142,7 @@ conn:on("complete", function()
           end)
       end)
     conn:on("cameraPos", function(arg)
-        setWorldLoc( - arg.x * CELLUNITSZ, - arg.z * CELLUNITSZ )
+        setWorldLoc(  arg.x * CELLUNITSZ,  arg.z * CELLUNITSZ )
       end)
   end)
 
@@ -1182,6 +1167,8 @@ th:run(function()
     while true do
       local t = now()
       local dt = t - prevTime
+
+      local cx,cy,cz = camera:getLoc()
       
       -- game status
       frameCnt = frameCnt + 1
@@ -1193,40 +1180,38 @@ th:run(function()
         if not y then y = 0 end
         local curmode = "PRESENT"
         if guiSelectedButton and guiSelectedButton.editMode then curmode = "FUTURE" end
-        local camx,camy,camz = camera:getLoc()
+        
         local chknum = 0
         if chunkTable then chknum = chunkTable:numList() end
         local rtt = -1
         if conn and conn.lastRtt then rtt = conn.lastRtt * 1000 end
-        local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d scr:%d,%d,%d chk:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z,camy, -scrollX,0, -scrollZ, chknum, rtt, curmode)
+        local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d,%d,%d chk:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z, cx,cy,cz, chknum, rtt, curmode)
         statBox:set(s)
         trySendPing(s)
         frameCnt = 0
       end
 
       -- alloc/clean/update chunks
-      pollChunks( currentZoomLevel, -scrollX, -scrollZ)
+      pollChunks( currentZoomLevel, cx, cz ) -- TODO: dont use camz, use ray center.
 
       -- update chars
       pollChars(t)
       
       -- cams and moves      
-      local cx,cy,cz = camera:getLoc()
-      local dy,dz = 0 - cy, 0 - cz -- move world. not camera, because of Moai's bug?
-      camera:setRot( 180 - angle(dz,dy), 0, 0 )
+      camera:setRot( -70, 0, 0 )      -- -90 to see vertical downward
 
       local camSpeed = cy / 50
       if keyState[119] then --w
-        moveWorldLoc(0,camSpeed)
-      end
-      if keyState[115] then --s
         moveWorldLoc(0,-camSpeed)
       end
+      if keyState[115] then --s
+        moveWorldLoc(0,camSpeed)
+      end
       if keyState[100] then --d
-        moveWorldLoc(-camSpeed,0)
+        moveWorldLoc(camSpeed,0)
       end
       if keyState[97] then --a
-        moveWorldLoc(camSpeed,0)
+        moveWorldLoc(-camSpeed,0)
       end
       if keyState[101] then --e
       end
@@ -1251,11 +1236,9 @@ th:run(function()
       if keyState[13] then -- enter
       end
 
-
-      cz = cy * 0.4
-
       if cy < ZOOM_MINY then cy = ZOOM_MINY end
       if cy > ZOOM_MAXY then cy = ZOOM_MAXY end
+
       camera:setLoc( cx, cy, cz )
       
       if cy ~= prevcy and zoomSliderTab then zoomSliderTab:update(camera) end
@@ -1280,7 +1263,7 @@ th:run(function()
           local editmode = guiSelectedButton and guiSelectedButton.editMode
 
           --        local st = os.clock()
-          local ctlx,ctly,ctlz = findFieldControlPoint( editmode, camx - scrollX, camy, camz - scrollZ, xn,yn,zn )
+          local ctlx,ctly,ctlz = findFieldControlPoint( editmode, camx, camy, camz, xn,yn,zn )
           --        local et = os.clock()
           --        print("t:", (et-st), "ctl:",ctlx,ctlz)
 
@@ -1343,9 +1326,6 @@ th:run(function()
           end)
         assert(ret)
       end
-      
-      --
-      updateWorldLoc()
 
       prevTime = t
       coroutine.yield()

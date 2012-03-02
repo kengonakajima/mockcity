@@ -117,7 +117,7 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
       end
     end    
   end
-  local vb = makeVertexBuffer(numVert)
+  local vb = makeVertexBuffer(numVert+1) -- +1 : moaiのバグ回避用 (TODO:fix)
   
   local numIndex = triNum * 3
   if lineMode then
@@ -289,6 +289,8 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
       end      
     end
   end
+  -- 最後に、moaiのcullバグを回避するための頂点を追加してみる (TODO:fix)
+  vb:pushVert( 0, - w * CELLUNITSZ, 0 )
   vb:bless()
   local pt = MOAIMesh.GL_TRIANGLES
   if lineMode then
