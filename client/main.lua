@@ -903,28 +903,28 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
   local tgt = getFieldHeight
   if editmode then tgt = getFieldMockHeight end
     
-  local x,y,z = camx,camy,camz
+
   local camvec, dirvec = vec3(camx,camy,camz), vec3(dirx,diry,dirz)
-  local unit = CELLUNITSZ * currentZoomLevel
+  local unit = CELLUNITSZ * currentZoomLevel 
   
   local loopN = camy / unit
   local previx,previz
-  
+
   for i=1,loopN*2 do
-    x,y,z = x + dirx * unit, y + diry * unit, z + dirz * unit
-    local ix, iy, iz = int(x/unit), int(y/unit), int(z/unit)
+    local x,y,z = camx + dirx * unit * i, camy + diry * unit * i, camz + dirz * unit * i
+    local ix, iy, iz = int(x/CELLUNITSZ), int(y/CELLUNITSZ), int(z/CELLUNITSZ)
     if ix ~= previx or iz ~= previz then
       local h4s = getHeights4( tgt, ix,iz)
 
 --        print("diffed.",ix,iy,iz, "h4:", h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom )
-      local ltY,rtY,rbY,lbY = h4s.leftTop * unit, h4s.rightTop * unit, h4s.rightBottom * unit, h4s.leftBottom * unit
-      local ltX,ltZ = ix*unit, iz*unit
-      local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rtY,ltZ), vec3(ltX+unit,rbY,ltZ+unit))
+      local ltY,rtY,rbY,lbY = h4s.leftTop * CELLUNITSZ, h4s.rightTop * CELLUNITSZ, h4s.rightBottom * CELLUNITSZ, h4s.leftBottom * CELLUNITSZ
+      local ltX,ltZ = ix*CELLUNITSZ, iz*CELLUNITSZ
+      local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rtY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ))
       if t then
 --        print("HIT TRIANGLE RIGHT-UP. x,y,z:", ix,iy,iz)
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
-      t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rbY,ltZ+unit), vec3(ltX,lbY,ltZ+unit))
+      t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ), vec3(ltX,lbY,ltZ+CELLUNITSZ))
       if t then
 --        print("HIT TRIANGLE LEFT-DOWN. x,y,z:",ix,iy,iz)
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
@@ -1155,6 +1155,16 @@ function trySendPing(s)
   end  
 end
 
+function makeDebugBullet(x,y,z, dx,dy,dz)
+  local p = MOAIProp.new()
+  p:setDeck(cursorProp)
+  p:setScl(0.3,0.3,0.3)
+  p:setDeck(cursorDeck)
+  p:setLoc(x + 100 *dx,y + 100*dy,z+100*dz)
+  p:moveLoc(dx*1000,dy*1000,dz*1000,1,MOAIEaseType.LINEAR)
+  fieldLayer:insertProp(p)
+  return p
+end
 
 ---------------------
 
@@ -1259,7 +1269,7 @@ th:run(function()
         
         if lastPointerX then 
           local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
-          --        print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
+                  print("pointer:", px,py,pz, xn,yn,zn, lastPointerX, lastPointerY )
           local editmode = guiSelectedButton and guiSelectedButton.editMode
 
           --        local st = os.clock()
@@ -1272,7 +1282,14 @@ th:run(function()
           end
           if dcamy < CURSOR_MAXY then
             if lastControlX then
+--              print("lastControl:",lastControlX,lastControlZ)
               cursorProp:setAtGrid(editmode, lastControlX, lastControlZ)
+
+              -- デバッグ用のpropを出してみる
+              if range(0,100)>80 then
+                makeDebugBullet( camx,camy,camz, xn,yn,zn )
+              end
+              
             end          
             appearCursor()
             if editmode then setEditModeAroundCursor(lastControlX,lastControlZ, editmode)  end
