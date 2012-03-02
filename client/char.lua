@@ -19,6 +19,8 @@ function makeChar(x,z,deck, baseIndex )
 
   ch.baseIndex = baseIndex
   ch.moveStartAt = 0
+
+  ch.meshCache = {}
   
   function ch:setState(st)
     self.state = st
@@ -66,7 +68,11 @@ function makeChar(x,z,deck, baseIndex )
     end
     if ind ~= self.lastInd then
       self.lastInd = ind
-      local mesh = makeSquareBoardMesh(deck,ind)
+      local mesh = self.meshCache[ind]
+      if not mesh then
+        mesh = makeSquareBoardMesh(deck,ind)
+        self.meshCache[ind] = mesh
+      end      
       ch:setDeck(mesh)            
     end
 
@@ -76,7 +82,6 @@ function makeChar(x,z,deck, baseIndex )
         
     -- debug move
     if self.baseIndex == 1 then
-      print("debugmove")
       if not self.debugcnt then self.debugcnt = 0 end
       self.debugcnt = self.debugcnt + 1
       if self.debugcnt % 100 == 0 then
@@ -102,7 +107,6 @@ end
 function pollChars(t)
   for i,v in ipairs(chars) do
     v:poll(t)
-    print( "ch:", v:getLoc())
   end
   
 end

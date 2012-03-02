@@ -555,7 +555,10 @@ function onKeyboardEvent(k,dn)
     else
       if k == 108 then --l
         if lastControlX then
-          local ch =  makeChar(lastControlX,lastControlZ, charDeck, 1 )
+          for i=1,10 do
+            local dx,dz = irange(0,10),irange(0,10)
+            local ch =  makeChar(lastControlX+dx,lastControlZ+dz, charDeck, 1 )
+          end          
         end        
       end
       if k == 109 then --m
@@ -1191,11 +1194,13 @@ th:run(function()
         local curmode = "PRESENT"
         if guiSelectedButton and guiSelectedButton.editMode then curmode = "FUTURE" end
         
-        local chknum = 0
+        local chknum, chnum = 0,0
         if chunkTable then chknum = chunkTable:numList() end
+        if chars then chnum = #chars end
         local rtt = -1
         if conn and conn.lastRtt then rtt = conn.lastRtt * 1000 end
-        local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d,%d,%d chk:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z, cx,cy,cz, chknum, rtt, curmode)
+        
+        local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d,%d,%d chk:%d ch:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z, cx,cy,cz, chknum, chnum, rtt, curmode)
         statBox:set(s)
         trySendPing(s)
         frameCnt = 0
@@ -1282,14 +1287,7 @@ th:run(function()
           end
           if dcamy < CURSOR_MAXY then
             if lastControlX then
---              print("lastControl:",lastControlX,lastControlZ)
               cursorProp:setAtGrid(editmode, lastControlX, lastControlZ)
-
-              -- デバッグ用のpropを出してみる
-              if range(0,100)>80 then
-                makeDebugBullet( camx,camy,camz, xn,yn,zn )
-              end
-              
             end          
             appearCursor()
             if editmode then setEditModeAroundCursor(lastControlX,lastControlZ, editmode)  end
