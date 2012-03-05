@@ -798,6 +798,42 @@ function ChunkTable(absW,absH)
       print("chunk:list:",i, v.zoomLevel, v.vx, v.vz )
     end    
   end
+
+  function ct:poll(zoomlevel, centerx, centerz )
+
+    local r = 4
+    local centerChunkX, centerChunkZ = int(centerx/CELLUNITSZ/CHUNKSZ/zoomlevel), int(centerz/CELLUNITSZ/CHUNKSZ/zoomlevel)
+
+    for dchz=-r,r do
+      for dchx=-r,r do
+        local chx,chz = centerChunkX + dchx, centerChunkZ + dchz
+        if self:ind(zoomlevel, chx, chz ) then
+          local ch = self:getChunk(zoomlevel, chx,chz )
+          if not ch then
+            -- check center of the chunk
+            local gridx,gridz = chx * CHUNKSZ * zoomlevel, chz * CHUNKSZ * zoomlevel
+            --          local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ
+            local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ 
+            local wx1,wy1 = fieldLayer:worldToWnd(x,y,z)
+            local wx2,wy2 = fieldLayer:worldToWnd(x + CHUNKSZ*CELLUNITSZ*zoomlevel,y,z+CHUNKSZ*CELLUNITSZ*zoomlevel)
+            --          print("aaa:",wx1,wy1,wx2,wy2)
+            if wx2>0 and wy2>0 and wx1<SCRW and wy1<SCRH then
+              ch = makeChunkHeightMapProp(gridx,gridz,zoomlevel)
+              self:setChunk( zoomlevel, chx,chz, ch )
+              --            print("pollChunks: alloc chk:", zoomlevel, chx, chz, gridx,gridz, ch )
+            end          
+          end
+        end
+      end
+    end
+    local outed = 0
+    self:scanAll( function(ch)
+        if not ch:inWindow(300) and ch.state == "loaded" then
+          ch:clean()
+        end
+        ch:poll()
+      end)
+  end  
   
   return ct
 end
@@ -812,42 +848,6 @@ function clearAllEditModeChunks()
 end
 
 
-function pollChunks(zoomlevel, centerx, centerz )
-  if not chunkTable then return end
-
-  local r = 3
-  local centerChunkX, centerChunkZ = int(centerx/CELLUNITSZ/CHUNKSZ/zoomlevel), int(centerz/CELLUNITSZ/CHUNKSZ/zoomlevel)
-
-  for dchz=-r,r do
-    for dchx=-r,r do
-      local chx,chz = centerChunkX + dchx, centerChunkZ + dchz
-      if chunkTable:ind(zoomlevel, chx, chz ) then
-        local ch = chunkTable:getChunk(zoomlevel, chx,chz )
-        if not ch then
-          -- check center of the chunk
-          local gridx,gridz = chx * CHUNKSZ * zoomlevel, chz * CHUNKSZ * zoomlevel
---          local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ
-          local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ 
-          local wx1,wy1 = fieldLayer:worldToWnd(x,y,z)
-          local wx2,wy2 = fieldLayer:worldToWnd(x + CHUNKSZ*CELLUNITSZ*zoomlevel,y,z+CHUNKSZ*CELLUNITSZ*zoomlevel)
---          print("aaa:",wx1,wy1,wx2,wy2)
-          if wx2>0 and wy2>0 and wx1<SCRW and wy1<SCRH then
-            ch = makeChunkHeightMapProp(gridx,gridz,zoomlevel)
-            chunkTable:setChunk( zoomlevel, chx,chz, ch )
---            print("pollChunks: alloc chk:", zoomlevel, chx, chz, gridx,gridz, ch )
-          end          
-        end
-      end
-    end
-  end
-  local outed = 0
-  chunkTable:scanAll( function(ch)
-      if not ch:inWindow(300) and ch.state == "loaded" then
-        ch:clean()
-      end
-      ch:poll()
-    end)
-end
 
 function getFieldHeight(x,z)
   local ch = chunkTable:getGrid(currentZoomLevel,x,z)
@@ -1004,6 +1004,7 @@ function camera:retargetY(toY)
 end
 
 function getCameraCenterGrid()
+  if not chunkTable then return nil end
   local camx,camy,camz = camera:getLoc()  
   local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(SCRW/2,SCRH/2)
   return findFieldControlPoint( editmode, camx,camy,camz, xn,yn,zn)
@@ -1206,11 +1207,9 @@ th:run(function()
       end
 
       -- alloc/clean/update chunks
-      if chunkTable then
-        local centerx,centery,centerz = getCameraCenterGrid()
-        if centerx then
-          pollChunks( currentZoomLevel, centerx*CELLUNITSZ, centerz*CELLUNITSZ ) 
-        end        
+      local centerx,centery,centerz = getCameraCenterGrid()
+      if chunkTable and centerx then
+        chunkTable:poll( currentZoomLevel, centerx*CELLUNITSZ, centerz*CELLUNITSZ ) 
       end
       
       -- update chars
@@ -1268,17 +1267,12 @@ th:run(function()
         local camx,camy,camz = camera:getLoc()
         local centerx,centery,centerz = getCameraCenterGrid()
 
-        local dcamy = camy
-        if centerx then
-          lastdcamy = dcamy
-          dcamy = camy - centery * CELLUNITSZ
-        elseif lastdcamy then
-          dcamy = lastdcamy
-        end
         
-        if lastPointerX then
+        if lastPointerX and centerx then
+          local dcamy = camy - centery * CELLUNITSZ
+          
           local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
---          print(string.format( "pointer:  %.4f,%.4f,%.4f  %d,%d  %.4f,%.4f,%.4f  %.4f,%.4f,%.4f", xn,yn,zn, lastPointerX, lastPointerY, camx,camy,camz, px,py,pz ))
+          --          print(string.format( "pointer:  %.4f,%.4f,%.4f  %d,%d  %.4f,%.4f,%.4f  %.4f,%.4f,%.4f", xn,yn,zn, lastPointerX, lastPointerY, camx,camy,camz, px,py,pz ))
           local editmode = guiSelectedButton and guiSelectedButton.editMode
 
           --        local st = os.clock()
@@ -1304,27 +1298,27 @@ th:run(function()
               updateButtonBGs()
             end
           end
-        end
 
-        -- adjust zoom level
-        assert(dcamy>0)
-        if dcamy < 4000 then
-          setZoomLevel(1)
-        elseif dcamy < 8000 then
-          setZoomLevel(2)
-        elseif dcamy < 16000 then
-          setZoomLevel(4)          
-        elseif dcamy < 32000 then
-          setZoomLevel(8)
-        elseif dcamy < 64000 then
-          setZoomLevel(16)
-        elseif dcamy < 128000 then
-          setZoomLevel(32)
-        elseif dcamy < 256000 then
-          setZoomLevel(64)
-        else
-          setZoomLevel(128)
-        end
+          -- adjust zoom level
+          assert(dcamy>0)
+          if dcamy < 4000 then
+            setZoomLevel(1)
+          elseif dcamy < 8000 then
+            setZoomLevel(2)
+          elseif dcamy < 16000 then
+            setZoomLevel(4)          
+          elseif dcamy < 32000 then
+            setZoomLevel(8)
+          elseif dcamy < 64000 then
+            setZoomLevel(16)
+          elseif dcamy < 128000 then
+            setZoomLevel(32)
+          elseif dcamy < 256000 then
+            setZoomLevel(64)
+          else
+            setZoomLevel(128)
+          end
+        end        
       end
 
 
