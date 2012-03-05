@@ -30,6 +30,7 @@ rpc = mprpc.create(net,msgpack)
 
 SCRW, SCRH = 960, 640
 
+ZOOM_INITY = 5000
 ZOOM_MINY = 500
 ZOOM_MAXY = 500000
 
@@ -293,7 +294,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   function p:poll()
     if self.state == "init" then
       if conn then
---        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel )      
+        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel, "curzl:", currentZoomLevel  )      
         conn:emit("getFieldRect", {
             x1 = self.vx,
             z1 = self.vz,
@@ -814,7 +815,7 @@ end
 function pollChunks(zoomlevel, centerx, centerz )
   if not chunkTable then return end
 
-  local r = 6
+  local r = 3
   local centerChunkX, centerChunkZ = int(centerx/CELLUNITSZ/CHUNKSZ/zoomlevel), int(centerz/CELLUNITSZ/CHUNKSZ/zoomlevel)
 
   for dchz=-r,r do
@@ -915,19 +916,19 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
 
   for i=1,loopN*2 do
     local x,y,z = camx + dirx * unit * i, camy + diry * unit * i, camz + dirz * unit * i
-    local ix, iy, iz = int(x/CELLUNITSZ), int(y/CELLUNITSZ), int(z/CELLUNITSZ)
+    local ix, iy, iz = int(x/unit), int(y/unit), int(z/unit)
     if ix ~= previx or iz ~= previz then
       local h4s = getHeights4( tgt, ix,iz)
 
 --        print("diffed.",ix,iy,iz, "h4:", h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom )
-      local ltY,rtY,rbY,lbY = h4s.leftTop * CELLUNITSZ, h4s.rightTop * CELLUNITSZ, h4s.rightBottom * CELLUNITSZ, h4s.leftBottom * CELLUNITSZ
-      local ltX,ltZ = ix*CELLUNITSZ, iz*CELLUNITSZ
-      local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rtY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ))
+      local ltY,rtY,rbY,lbY = h4s.leftTop * unit, h4s.rightTop * unit, h4s.rightBottom * unit, h4s.leftBottom * unit
+      local ltX,ltZ = ix*unit, iz*unit
+      local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rtY,ltZ), vec3(ltX+unit,rbY,ltZ+unit))
       if t then
 --        print("HIT TRIANGLE RIGHT-UP. x,y,z:", ix,iy,iz)
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
-      t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+CELLUNITSZ,rbY,ltZ+CELLUNITSZ), vec3(ltX,lbY,ltZ+CELLUNITSZ))
+      t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rbY,ltZ+unit), vec3(ltX,lbY,ltZ+unit))
       if t then
 --        print("HIT TRIANGLE LEFT-DOWN. x,y,z:",ix,iy,iz)
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
@@ -943,8 +944,8 @@ end
 -- level: 1,2,4,8, ..
 currentZoomLevel = 1
 function setZoomLevel(level)
-  currentZoomLevel = level
-  
+--  print("setZoomLevel:",level)
+  currentZoomLevel = level  
 end
 
 
@@ -958,7 +959,7 @@ camera = MOAICamera3D.new ()
 local z = camera:getFocalLength ( SCRW )
 camera:setFarPlane( ZOOM_MAXY*2 )
 camera:setNearPlane( 20 ) -- for precision
-camera:setLoc ( 0, ZOOM_MINY, 800 )
+camera:setLoc ( 0, ZOOM_INITY, 800 )
 camera.flyUp = false
 
 fieldLayer:setCamera ( camera )
@@ -966,6 +967,7 @@ charLayer:setCamera( camera )
 cursorLayer:setCamera ( camera )
 
 function camera:retargetYrate(yrate)
+  print("yr:",yrate)
   local cx,cy,cz = camera:getLoc()
   local centerx,centery,centerz = getCameraCenterGrid()
 
@@ -975,21 +977,14 @@ function camera:retargetYrate(yrate)
     toY = cy * 2
   else
     centery = centery * CELLUNITSZ
-    local dcamy = cy
-
-    dcamy = cy - centery
-    lastcentery = centery
-
-    if dcamy <= centery + ZOOM_MINY then
-      dcamy = centery + ZOOM_MINY
-    end
+    local dcamy = cy - centery
     
     print("dcamy:",dcamy, "cy:", cy, "center:", centerx, centery, centerz )
   
     if yrate > 1 then
-      toY = dcamy * yrate
+      toY = centery + dcamy * yrate
     elseif yrate < 1 then
-      toY = dcamy * yrate
+      toY = centery + dcamy * yrate
     end
   end
   
@@ -1025,7 +1020,7 @@ function angle(x,y)
   return s
 end
 
-camera:retargetY( ZOOM_MINY )
+
 
 
 -- cursor
@@ -1105,14 +1100,18 @@ conn:on("complete", function()
         end        
 --        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, ss )
         -- ignore data that is too late
-        if arg.skip < currentZoomLevel/2 or arg.skip > currentZoomLevel*2 then
-          print("data is too late")
+        if arg.skip < currentZoomLevel/2 then
+          print("getFieldRectResult data zoomLevel is too small: arg:", arg.skip, " curZL:", currentZoomLevel )
+          return
+        end
+        if arg.skip > currentZoomLevel*2 then
+          print("getFieldRectResult data zoomLevel is too large: arg:", arg.skip, " curZL:", currentZoomLevel )
           return
         end
         
         local ch = chunkTable:getGrid(arg.skip, arg.x1,arg.z1)
         if not ch then
-          print("no chunk, ignore data")
+          print("no chunk, ignore data:", arg.x1, arg.z1 )
           return
         end
         
@@ -1207,8 +1206,13 @@ th:run(function()
       end
 
       -- alloc/clean/update chunks
-      pollChunks( currentZoomLevel, cx, cz ) -- TODO: dont use camz, use ray center.
-
+      if chunkTable then
+        local centerx,centery,centerz = getCameraCenterGrid()
+        if centerx then
+          pollChunks( currentZoomLevel, centerx*CELLUNITSZ, centerz*CELLUNITSZ ) 
+        end        
+      end
+      
       -- update chars
       pollChars(t)
       
@@ -1303,6 +1307,7 @@ th:run(function()
         end
 
         -- adjust zoom level
+        assert(dcamy>0)
         if dcamy < 4000 then
           setZoomLevel(1)
         elseif dcamy < 8000 then
