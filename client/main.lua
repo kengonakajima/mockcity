@@ -488,16 +488,21 @@ function initZoomSlider()
   zoomSliderTab.baseY = baseY
 
   function zoomSliderTab:update(cam)
+    if not chunkTable then return end
+    local centerx,centery,centerz = getCameraCenterGrid()
+    if not centerx then return end
+    
     local xx,yy = self:getLoc()
     local x,y,z = cam:getLoc()
+    local dcamy = y - centery * CELLUNITSZ
     for i,v in ipairs(zoomTable) do      
-      if v >= y then
+      if v >= dcamy then
         
         self:setLoc(xx,self.baseY - BUTTONSIZE/2 - 4 - i )
         break
       end
     end
-    if y == ZOOM_MAXY then
+    if dcamy >= ZOOM_MAXY then
       local bx,by = zoomOutButton:getLoc()
       self:setLoc(xx,by+BUTTONSIZE - BUTTONSIZE/2+4)
     end    
@@ -589,7 +594,7 @@ end
 
 MOAIInputMgr.device.keyboard:setCallback( onKeyboardEvent )
 
-lastPointerX,lastPointerY=nil,nil
+lastPointerX,lastPointerY=0,0
 
 function onMouseLeftDrag(mousex,mousey)
   local x,z = cursorProp.lastGridX, cursorProp.lastGridZ
