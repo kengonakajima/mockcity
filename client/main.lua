@@ -467,7 +467,12 @@ function initZoomSlider()
         if clickH < 1 then clickH = 1 end
         if clickH > 128 then clickH = 128 end
         local toY = zoomTable[ clickH ]
-        camera:retargetY(toY)
+        local camx,camy,camz = camera:getLoc()
+        if toY > camy then
+          camera:retargetYrate(1.3)
+        else
+          camera:retargetYrate(0.75)
+        end
         print("slider:", baseY - y, "toy:", toY, zoom )
       end)
     b.slideIndex = i
@@ -508,6 +513,7 @@ function initZoomSlider()
     end    
   end
 end
+
 
 
 -- chat
@@ -824,7 +830,8 @@ function ChunkTable(absW,absH,absElev)
         local chx,chz = centerChunkX + dchx, centerChunkZ + dchz
         if self:ind(zoomlevel, chx, chz ) then
           local ch = self:getChunk(zoomlevel, chx,chz )
-          if not ch then
+          if targetingZoomLevel and zoomlevel ~= targetingZoomLevel then
+          elseif not ch then
             -- check center of the chunk
             local gridx,gridz = chx * CHUNKSZ * zoomlevel, chz * CHUNKSZ * zoomlevel
             --          local x,y,z = gridx * CELLUNITSZ, 0, gridz * CELLUNITSZ
@@ -919,8 +926,8 @@ function getHeights4(f, x,z)
 end  
 
 
-function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz , caller)
---  print("findFieldControlPoint: cam:",camx,camy,camz, " dir:", dirx,diry,dirz, caller)
+function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
+--  print("findFieldControlPoint: cam:",camx,camy,camz, " dir:", dirx,diry,dirz)
   local tgt = getFieldHeight
   if editmode then tgt = getFieldMockHeight end
     
@@ -938,7 +945,6 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz , calle
       local h4s = getHeights4( tgt, ix,iz)
 --      print("diffed.",ix,iy,iz, "h4:", h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom, "out:", h4s.out )      
       if h4s.out then
-        print("findFieldControlPoint: OUTTTTTTTT", caller )
         return nil
       end
       
@@ -997,6 +1003,26 @@ fieldLayer:setCamera ( camera )
 charLayer:setCamera( camera )
 cursorLayer:setCamera ( camera )
 
+function dyToZoomLevel(dy)
+  if dy < 4000 then
+    return 1
+  elseif dy < 8000 then
+    return 2
+  elseif dy < 16000 then
+    return 4
+  elseif dy < 32000 then
+    return 8
+  elseif dy < 64000 then
+    return 16
+  elseif dy < 128000 then
+    return 32
+  elseif dy < 256000 then
+    return 64
+  else
+    return 128
+  end  
+end
+
 function camera:retargetYrate(yrate)
   print("yr:",yrate)
   local cx,cy,cz = camera:getLoc()
@@ -1004,7 +1030,7 @@ function camera:retargetYrate(yrate)
 
   local toY
   
-  if not centerx then
+  if not centery then
     if yrate > 1 then
       toY = cy * 1.5
     elseif yrate < 1 then
@@ -1020,9 +1046,9 @@ function camera:retargetYrate(yrate)
     end
   end
   
-  camera:retargetY(toY)
+  camera:retargetY(toY, centery)
 end
-function camera:retargetY(toY)  
+function camera:retargetY(toY,centery)  
   local cx,cy,cz = self:getLoc()
   if toY < ZOOM_MINY then
     toY = ZOOM_MINY
@@ -1030,18 +1056,27 @@ function camera:retargetY(toY)
     toY = ZOOM_MAXY
   end
 
+  local curcentery = centery
+  if not curcentery then
+    local x,y,z = getCameraCenterGrid("retarget")
+    curcentery = y * CELLUNITSZ
+  end
+  if not curcentery then curcentery = 0 end
+    
+  targetingZoomLevel = dyToZoomLevel(toY - curcentery)
+
   camera:seekLoc(cx,toY,cz,0.5)  
   if zoomSliderTab then zoomSliderTab:update(camera) end
 
 end
 
-function getCameraCenterGrid(caller)
+function getCameraCenterGrid()
   if not chunkTable then return nil end
   local camx,camy,camz = camera:getLoc()  
   local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(SCRW/2,SCRH/2)
-  local x,y,z = findFieldControlPoint( editmode, camx,camy,camz, xn,yn,zn, caller)
+  local x,y,z = findFieldControlPoint( editmode, camx,camy,camz, xn,yn,zn)
   if not x then
-    print("getCameraCenterGrid: x is nil", camx,camy,camz, xn,yn,zn, caller )
+    print("getCameraCenterGrid: x is nil", camx,camy,camz, xn,yn,zn)
   end  
   return x,y,z
 end
@@ -1343,23 +1378,7 @@ th:run(function()
             -- adjust zoom level
             assert(dcamy>0)
 --            print("dcamy:", dcamy, "camy:", camy, "center:", centery, centerx, centerz )
-            if dcamy < 4000 then
-              setZoomLevel(1)
-            elseif dcamy < 8000 then
-              setZoomLevel(2)
-            elseif dcamy < 16000 then
-              setZoomLevel(4)          
-            elseif dcamy < 32000 then
-              setZoomLevel(8)
-            elseif dcamy < 64000 then
-              setZoomLevel(16)
-            elseif dcamy < 128000 then
-              setZoomLevel(32)
-            elseif dcamy < 256000 then
-              setZoomLevel(64)
-            else
-              setZoomLevel(128)
-            end
+            setZoomLevel( dyToZoomLevel(dcamy) )
           end        
         end
       end
