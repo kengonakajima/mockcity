@@ -94,7 +94,7 @@ end
 -- 1110 R
 -- 1111 N
 function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, heightDiv )
---  print("makeHeightMapMesh: sz:",sz, "w:",w,"h:",h,"dat:",#hdata, tdata )
+--  print("makeHeightMapMesh: sz:",sz, "w:",w,"h:",h,"dat:",#hdata, tdata, hdata[1] )
 
   local vertNum = w * h
   local cellNum = (w-1) * (h-1)
@@ -131,10 +131,21 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
       end
     end
   end
+
+  -- 
+  local zln = int(sz/CELLUNITSZ)
+  function round(h)
+    local mod = h % zln
+    if mod > 0 then
+      return int(h/zln)*zln + zln
+    else
+      return int(h/zln)*zln
+    end    
+  end
   
   local ib = makeIndexBuffer( numIndex )
 
-  -- 3角形の数だけ回す
+  -- triangle gen loop
   local indexCnt, cellCnt = 1,1
   for z=1,h-1 do
     for x=1,w-1 do
@@ -142,11 +153,16 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
 
       local fieldVertInd = (z-1)*w + (x-1) + 1
 
-      local leftTopHeight = hdata[fieldVertInd] * sz
-      local rightTopHeight = hdata[fieldVertInd+1] * sz
-      local rightBottomHeight = hdata[fieldVertInd+1+w] * sz
-      local leftBottomHeight = hdata[fieldVertInd+w] * sz
+--      local leftTopHeight = hdata[fieldVertInd] * sz
+--      local rightTopHeight = hdata[fieldVertInd+1] * sz
+--      local rightBottomHeight = hdata[fieldVertInd+1+w] * sz
+--      local leftBottomHeight = hdata[fieldVertInd+w] * sz
 
+      local leftTopHeight = round(hdata[fieldVertInd]) * sz
+      local rightTopHeight = round(hdata[fieldVertInd+1]) * sz
+      local rightBottomHeight = round(hdata[fieldVertInd+1+w]) * sz
+      local leftBottomHeight = round(hdata[fieldVertInd+w]) * sz
+      
       local toRed = nil
       if reddata then toRed = reddata[fieldVertInd] end
       
@@ -168,6 +184,7 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
       leftBottomHeight = leftBottomHeight / heightDiv
       rightTopHeight = rightTopHeight / heightDiv
       rightBottomHeight = rightBottomHeight / heightDiv
+
       
       if lineMode then
         if not toRed then
