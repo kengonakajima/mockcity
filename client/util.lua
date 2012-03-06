@@ -258,6 +258,9 @@ end
 function vec3toString(v)
   return string.format("(%f,%f,%f)", v.x, v.y, v.z )
 end
+function vec3toIntString(v)
+  return string.format("(%d,%d,%d)", v.x, v.y, v.z )
+end
 
 -- t, u,v 
 function triangleIntersect( orig, dir, v0,v1,v2 )

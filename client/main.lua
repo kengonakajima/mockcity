@@ -151,9 +151,6 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
       for z=0,CHUNKSZ-1 do
         for x=0,CHUNKSZ-1 do
           local ind = x + z*(CHUNKSZ+1) + 1
---          if self.mhdata[ind]~=self.hdata[ind] then
---            print("k:",x,z,showtdata[ind],showhdata[ind],showtdata[ind-1],showhdata[ind-1])
---          end          
           if showhdata[ind] > 0 then
             if self.tdata[ind] == CELLTYPE.WATER then
               showtdata[ind] = CELLTYPE.SAND
@@ -446,7 +443,7 @@ function initZoomSlider()
   local baseX, baseY = -SCRW/2 + 50, SCRH/2 - 80
   local x,y = baseX, baseY
 
-  zoomInButton = makeButton( "zoomIn", x,y, guiDeck, 17, byte("k"), function(self,x,y,down)
+  zoomInButton = makeButton( "zoomIn", x,y, guiDeck, 17, byte("k"), function(self,x,y,down) --k
       if down then camera:retargetYrate( 0.75 ) end
     end)
   zoomInButton.flippable = false
@@ -481,7 +478,7 @@ function initZoomSlider()
     table.insert(zoomSliders,b)
   end
   y = y - BUTTONSIZE
-  zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("j"), function(self,x,y,down)
+  zoomOutButton = makeButton( "zoomOut", x,y, guiDeck, 18, byte("j"), function(self,x,y,down) --j
       if down then camera:retargetYrate( 1.3 ) end
     end)
   zoomOutButton.flippable = false
@@ -494,7 +491,7 @@ function initZoomSlider()
 
   function zoomSliderTab:update(cam)
     if not chunkTable then return end
-    local centerx,centery,centerz = getCameraCenterGrid( "slider" )
+    local centerx,centery,centerz = getCameraCenterGrid()
     if not centerx then return end
     
     local xx,yy = self:getLoc()
@@ -548,7 +545,7 @@ function onKeyboardEvent(k,dn)
   local hit = processButtonShortcutKey(k,dn)
 
   if not hit and dn then
-    print("keyhit:", k, "chatbox:", chatBox )
+--    print("keyhit:", k, "chatbox:", chatBox )
     if k == 13 then -- start chat
       if chatBox then
         endChatMode(true)
@@ -683,7 +680,7 @@ function onMouseLeftEvent(down)
   if not chunkTable then return end
 
   local camx,camy,camz = camera:getLoc()
-  local centerx,centery,centerz = getCameraCenterGrid( "mouseleft" )
+  local centerx,centery,centerz = getCameraCenterGrid()
   
   local dcamy = camy
   if centery then
@@ -871,8 +868,10 @@ end
 
 
 
+-- x,z: grid
 function getFieldHeight(x,z)
   local ch = chunkTable:getGrid(currentZoomLevel,x,z)
+--  print("getFieldHeight: ch:", ch, x,z,currentZoomLevel )
   if ch then return ch:getHeight(x,z) else return nil end
 end
 function getFieldMockHeight(x,z)
@@ -922,7 +921,9 @@ function getHeights4(f, x,z)
   local bh = f(x+1,z) 
   local ch = f(x+1,z+1) 
   local dh = f(x,z+1)
-  return { leftTop = ah or 0, rightTop = bh or 0 , rightBottom = ch or 0 , leftBottom = dh or 0 , out = out }
+  local hasNil = false
+  if not ah or not bh or not ch or not dh then hasNil = true end
+  return { leftTop = ah or 0, rightTop = bh or 0 , rightBottom = ch or 0 , leftBottom = dh or 0 , out = out, hasNil = hasNil }
 end  
 
 
@@ -942,40 +943,51 @@ function findFieldControlPoint( editmode, camx,camy,camz, dirx,diry,dirz )
     local x,y,z = camx + dirx * unit * i, camy + diry * unit * i, camz + dirz * unit * i
     local ix, iy, iz = int(x/unit), int(y/unit), int(z/unit)
     if ix ~= previx or iz ~= previz then
-      local h4s = getHeights4( tgt, ix,iz)
---      print("diffed.",ix,iy,iz, "h4:", h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom, "out:", h4s.out )      
+      local h4s = getHeights4( tgt, ix * currentZoomLevel,iz*currentZoomLevel)
+--      print("diffed. unit:",unit, "ixyz:",ix,iy,iz, "h4:", h4s.leftTop, h4s.rightTop, h4s.rightBottom, h4s.leftBottom, "out:", h4s.out )      
       if h4s.out then
         return nil
       end
       
-      local ltY,rtY,rbY,lbY = h4s.leftTop * unit, h4s.rightTop * unit, h4s.rightBottom * unit, h4s.leftBottom * unit
+      local ltY,rtY,rbY,lbY = h4s.leftTop * CELLUNITSZ, h4s.rightTop * CELLUNITSZ, h4s.rightBottom * CELLUNITSZ, h4s.leftBottom * CELLUNITSZ
       local ltX,ltZ = ix*unit, iz*unit
+
+--      print( "cam:",vec3toIntString(camvec), "dir:",vec3toString(dirvec), "0:",vec3toIntString(vec3(ltX,ltY,ltZ)), "1:",vec3toIntString(vec3(ltX+unit,rtY,ltZ)), "2:",vec3toIntString(vec3(ltX+unit,rbY,ltZ+unit)))
+    
       local t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rtY,ltZ), vec3(ltX+unit,rbY,ltZ+unit))
+      
       if t then
---        print("HIT TRIANGLE RIGHT-UP. x,y,z:", ix,iy,iz)
+--        print("HIT TRIANGLE RIGHT-UP. x,y,z:", ix,iy,iz, "loop:", i )
         if iy*currentZoomLevel > chunkTable.absMaxElevation then
           print("over MAXELEVATION!:", iy*currentZoomLevel )
           iy = 0
-        end      
+        end
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
       t,u,v = triangleIntersect( camvec, dirvec, vec3(ltX,ltY,ltZ), vec3(ltX+unit,rbY,ltZ+unit), vec3(ltX,lbY,ltZ+unit))
       if t then
---        print("HIT TRIANGLE LEFT-DOWN. x,y,z:",ix,iy,iz)
+--        print("HIT TRIANGLE LEFT-DOWN. x,y,z:",ix,iy,iz, "loop:", i, "h4:", h4s.leftTop )
         if iy*currentZoomLevel > chunkTable.absMaxElevation then
-          print("over MAXELEVATION!:", iy*currentZoomLevel )
+          print("over MAXELEVATION!:", iy*currentZoomLevel, chunkTable.absMaxElevation )
           iy = 0
-        end        
+        end
         return ix*currentZoomLevel,iy*currentZoomLevel,iz*currentZoomLevel
       end
     end      
     if y < 0 then
-      return previx*currentZoomLevel,previy*currentZoomLevel, previz*currentZoomLevel
+      local h = tgt(ix*currentZoomLevel,iz*currentZoomLevel)
+      return previx*currentZoomLevel,h, previz*currentZoomLevel
     end
     previx,previy,previz = ix,iy,iz    
   end
-  print("cannot reach polygon")
-  return nil
+  -- cannot reach polygon..
+--      local h4s = getHeights4( tgt, ix * currentZoomLevel,iz*currentZoomLevel)
+  local x,z = int(camx/CELLUNITSZ),int(camz/CELLUNITSZ)
+  local h4s = getHeights4( tgt, x,z )
+  print("OUT5:cannot reach polygon:", x,z, h4s.leftTop, h4s.leftBottom, h4s.rightTop,h4s.rightBottom )
+  local retH = h4s.leftTop
+  if h4s.hasNil then retH = chunkTable.absMaxElevation end
+  return x,retH,z
 end
 
 
@@ -1024,13 +1036,13 @@ function dyToZoomLevel(dy)
 end
 
 function camera:retargetYrate(yrate)
-  print("yr:",yrate)
+
   local cx,cy,cz = camera:getLoc()
-  local centerx,centery,centerz = getCameraCenterGrid("retarget")
+  local centerx,centery,centerz = getCameraCenterGrid()
 
   local toY
-  
-  if not centery then
+  if not centery then centery = 0 end 
+  if centery == 0 then
     if yrate > 1 then
       toY = cy * 1.5
     elseif yrate < 1 then
@@ -1045,20 +1057,21 @@ function camera:retargetYrate(yrate)
       toY = centery + dcamy * yrate
     end
   end
+
+  print("yr:",yrate, "toY:",toY, "centery:",centery )
+
+  local dcamy = toY - centery
   
-  camera:retargetY(toY, centery)
-end
-function camera:retargetY(toY,centery)  
-  local cx,cy,cz = self:getLoc()
-  if toY < ZOOM_MINY then
-    toY = ZOOM_MINY
-  elseif toY > ZOOM_MAXY then
+  if dcamy < ZOOM_MINY then
+    toY = centery + ZOOM_MINY
+  end
+  if toY > ZOOM_MAXY then
     toY = ZOOM_MAXY
   end
 
   local curcentery = centery
   if not curcentery then
-    local x,y,z = getCameraCenterGrid("retarget")
+    local x,y,z = getCameraCenterGrid()
     curcentery = y * CELLUNITSZ
   end
   if not curcentery then curcentery = 0 end
@@ -1075,9 +1088,8 @@ function getCameraCenterGrid()
   local camx,camy,camz = camera:getLoc()  
   local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(SCRW/2,SCRH/2)
   local x,y,z = findFieldControlPoint( editmode, camx,camy,camz, xn,yn,zn)
-  if not x then
-    print("getCameraCenterGrid: x is nil", camx,camy,camz, xn,yn,zn)
-  end  
+--  print("getCameraCenterGrid: cam:", string.format("%.4f,%.4f,%.4f",camx,camy,camz), "dir:", string.format("%.4f,%.4f,%.4f",xn,yn,zn), "result:", x,y,z)
+
   return x,y,z
 end
 
@@ -1153,7 +1165,7 @@ conn:on("complete", function()
       end)
     conn:on("pong", function(arg)
         local rtt = now() - arg.givenTime
-        print("pong.givenTime:",rtt)
+--        print("pong.givenTime:",rtt)
         conn.lastRtt = rtt
         
       end)
@@ -1252,7 +1264,7 @@ th:run(function()
       local t = now()
       local dt = t - prevTime
 
-      local cx,cy,cz = camera:getLoc()
+
       
       -- game status
       frameCnt = frameCnt + 1
@@ -1270,7 +1282,7 @@ th:run(function()
         if chars then chnum = #chars end
         local rtt = -1
         if conn and conn.lastRtt then rtt = conn.lastRtt * 1000 end
-        
+        local cx,cy,cz = camera:getLoc()        
         local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d,%d,%d chk:%d ch:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z, cx,cy,cz, chknum, chnum, rtt, curmode)
         statBox:set(s)
         trySendPing(s)
@@ -1279,7 +1291,7 @@ th:run(function()
 
       -- alloc/clean/update chunks
       if chunkTable then
-        local centerx,centery,centerz = getCameraCenterGrid("before-poll")
+        local centerx,centery,centerz = getCameraCenterGrid()
         if not centerx then
           centerx,centery,centerz = camera:getLoc()
           centerx,centery,centerz = centerx/CELLUNITSZ,centery/CELLUNITSZ,centerz/CELLUNITSZ
@@ -1294,65 +1306,58 @@ th:run(function()
       -- cams and moves      
       camera:setRot( -70, 0, 0 )      -- -90 to see vertical downward
 
-      local camSpeed = cy / 50
-      if keyState[119] then --w
-        moveWorldLoc(0,-camSpeed)
-      end
-      if keyState[115] then --s
-        moveWorldLoc(0,camSpeed)
-      end
-      if keyState[100] then --d
-        moveWorldLoc(camSpeed,0)
-      end
-      if keyState[97] then --a
-        moveWorldLoc(-camSpeed,0)
-      end
-      if keyState[101] then --e
-      end
 
-      local prevcy = cy
-      if keyState[32] then -- space
-        if camera.flyUp then 
-          cy = cy + 100
-          if cy > ZOOM_MAXY then
-            cy = ZOOM_MAXY
-            camera.flyUp = false          
-          end
-        else
-          cy = cy - 100
-          if cy < ZOOM_MINY then
-            cy = ZOOM_MINY
-            camera.flyUp = true
-          end
-        end
+      if keyState[101] then --e
       end
       
       if keyState[13] then -- enter
       end
 
-      if cy < ZOOM_MINY then cy = ZOOM_MINY end
-      if cy > ZOOM_MAXY then cy = ZOOM_MAXY end
-
-      camera:setLoc( cx, cy, cz )
-      
-      if cy ~= prevcy and zoomSliderTab then zoomSliderTab:update(camera) end
-
       -- update cursor
       if chunkTable then
         
         local camx,camy,camz = camera:getLoc()
-        local centerx,centery,centerz = getCameraCenterGrid("thread")
+        local centerx,centery,centerz = getCameraCenterGrid()
 
         
         if lastPointerX and centerx then
+      
           local dcamy = camy - centery * CELLUNITSZ
+          if dcamy < ZOOM_MINY then
+            dcamy = ZOOM_MINY
+            camy = centery*CELLUNITSZ + dcamy
+            camera:setLoc( camx, camy, camz )
+          end
+          if dcamy > ZOOM_MAXY then
+            dcamy = ZOOM_MAXY
+            camy = centery*CELLUNITSZ + dcamy
+            camera:setLoc( camx, camy, camz )
+          end
+
+
+          local camSpeed = dcamy / 50
+          if keyState[119] then --w
+            moveWorldLoc(0,-camSpeed)
+          end
+          if keyState[115] then --s
+            moveWorldLoc(0,camSpeed)
+          end
+          if keyState[100] then --d
+            moveWorldLoc(camSpeed,0)
+          end
+          if keyState[97] then --a
+            moveWorldLoc(-camSpeed,0)
+          end
+
           
+          if zoomSliderTab then zoomSliderTab:update(camera) end
+      
           local px,py,pz, xn,yn,zn = fieldLayer:wndToWorld(lastPointerX,lastPointerY)
           --          print(string.format( "pointer:  %.4f,%.4f,%.4f  %d,%d  %.4f,%.4f,%.4f  %.4f,%.4f,%.4f", xn,yn,zn, lastPointerX, lastPointerY, camx,camy,camz, px,py,pz ))
           local editmode = guiSelectedButton and guiSelectedButton.editMode
 
           --        local st = os.clock()
-          local ctlx,ctly,ctlz = findFieldControlPoint( editmode, camx, camy, camz, xn,yn,zn, "thread" )
+          local ctlx,ctly,ctlz = findFieldControlPoint( editmode, camx, camy, camz, xn,yn,zn )
           --        local et = os.clock()
           --        print("t:", (et-st), "ctl:",ctlx,ctlz)
 
@@ -1376,7 +1381,7 @@ th:run(function()
             end
 
             -- adjust zoom level
-            assert(dcamy>0)
+
 --            print("dcamy:", dcamy, "camy:", camy, "center:", centery, centerx, centerz )
             setZoomLevel( dyToZoomLevel(dcamy) )
           end        
