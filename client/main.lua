@@ -30,7 +30,7 @@ rpc = mprpc.create(net,msgpack)
 
 SCRW, SCRH = 960, 640
 
-ZOOM_INITY = 5000
+ZOOM_INITY = 1000
 ZOOM_MINY = 500
 ZOOM_MAXY = 500000
 
@@ -93,15 +93,18 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   local p = MOAIProp.new()
 
   p.zoomLevel = zoomlevel
-  function p:setData( tdata, hdata, mhdata )
---    print("hm:setData:", #tdata, #hdata, #mhdata, tot )
+  function p:setData( tdata, hdata, mhdata, objdata )
     local nElem = ( CHUNKSZ+1 ) * (CHUNKSZ+1) -- rightside and bottomsize require 1 more vertices
     assert( #tdata == nElem )
     assert( #hdata == nElem )
     assert( #mhdata == nElem )
-    self.tdata, self.hdata, self.mhdata  = dupArray(tdata), dupArray(hdata), dupArray(mhdata)
+    assert( #objdata == nElem )
+    self.tdata, self.hdata, self.mhdata, self.objdata  = dupArray(tdata), dupArray(hdata), dupArray(mhdata), dupArray(objdata)
     self.validMockNum = 0
-    for i =1,#tdata do if hdata[i] ~= mhdata[i] then self.validMockNum = self.validMockNum + 1 end end
+    for i=1,#tdata do if hdata[i] ~= mhdata[i] then self.validMockNum = self.validMockNum + 1 end end
+    self.objNum = 0
+    for i,v in ipairs(objdata) do if v ~= OBJTYPE.NONE then self.objNum = self.objNum + 1 end end
+    print("setdata: objnum:", self.objNum, "zl:", currentZoomLevel )
   end
     
   function p:updateHeightMap(editmode)
@@ -207,7 +210,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
     -- objs(fence,tree,building..)
     local objary = {}
     
-    if not editmode and zoomlevel == 1 then
+    if not editmode then --and zoomlevel == 1 then
       for z=0,CHUNKSZ-1 do
         for x=0,CHUNKSZ-1 do
           local ind = x + z*(CHUNKSZ+1)+1
@@ -222,11 +225,11 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
             if rt ~= t then table.insert( objary, {OBJMESHTYPE.FENCE, x,h,z,25,DIR.RIGHT } ) end
             if dt ~= t then table.insert( objary, {OBJMESHTYPE.FENCE, x,h,z,25,DIR.DOWN } ) end
             if ut ~= t then table.insert( objary, {OBJMESHTYPE.FENCE, x,h,z,25,DIR.UP } ) end
-
-            if range(0,100)>50 then
-              table.insert( objary, { OBJMESHTYPE.BOARD, x,h,z, 26 } )
-            end            
           end
+          local o = self.objdata[ind]
+          if o == OBJTYPE.TREE then
+            table.insert( objary, { OBJMESHTYPE.BOARD, x,h,z, 26 } )
+          end                      
         end
       end
       if #objary > 0 then
@@ -237,10 +240,10 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
           p = MOAIProp.new()
           self.objp = p
           fieldLayer:insertProp(p)
-          print("FFFFFFFFFFFFF:", #objary )
         end
-        local fm = makeMultiObjMesh(objary,baseDeck)
+        local fm = makeMultiObjMesh(objary,baseDeck )
         p:setDeck(fm)
+        p:setScl(zoomlevel,1,zoomlevel)
 
         p:setColor(1,1,1,1)
         p:setCullMode( MOAIProp.CULL_NONE )
@@ -1180,8 +1183,9 @@ conn:on("complete", function()
     conn:on("getFieldRectResult", function(arg)
         local ss = ""
         if arg.hdata then
-          ss = "ndata:".. #arg.hdata .. #arg.tdata .. #arg.mhdata
+          ss = "ndata:".. #arg.hdata .. #arg.tdata .. #arg.mhdata .. " objdatan:" .. #arg.objdata
         end
+
 --        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, ss )
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 then
@@ -1200,7 +1204,7 @@ conn:on("complete", function()
         end
         
         ch.zoomLevel = arg.skip
-        ch:setData( arg.tdata, arg.hdata, arg.mhdata )
+        ch:setData( arg.tdata, arg.hdata, arg.mhdata, arg.objdata )
         ch:updateHeightMap(ch.editMode)
         ch.state = "loaded"
         -- clean lower level 4 chunks when load finished

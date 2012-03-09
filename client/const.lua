@@ -7,3 +7,8 @@ CELLTYPE={
   WOODDEPO = 7,
   WHITE = 17
 }
+
+OBJTYPE = {
+  NONE = 0,
+  TREE = 1,
+}

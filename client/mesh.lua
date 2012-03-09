@@ -366,7 +366,7 @@ OBJMESHTYPE = {
   BOARD=2 -- vert:4 index:6, only front face
 }
   
-function makeMultiObjMesh(ary,deck)
+function makeMultiObjMesh(ary,deck )
   local n = #ary 
   local vb = makeVertexBuffer( n * 4 )
   local ib = makeIndexBuffer( n * 2 * 3 ) -- 2 tris
@@ -405,7 +405,7 @@ function makeMultiObjMesh(ary,deck)
       ib:pushIndexes( { 1,3,2,   1,4,3 }, dIndex )
       dIndex = dIndex + 4
     elseif t == OBJMESHTYPE.BOARD then
-      print("BOARD!",x,z)
+--      print("BOARD!",x,z)
       vb:pushVert( dx-l,dy+h,dz-l, u1,v1 ) -- A
       vb:pushVert( dx+l,dy+h,dz-l, u2,v1 ) -- B
       vb:pushVert( dx+l,dy,dz+l/2, u2,v2) --C
