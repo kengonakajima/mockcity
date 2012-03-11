@@ -567,16 +567,16 @@ function onKeyboardEvent(k,dn)
     else
       if k == 108 then --l
         if lastControlX then
-          for i=1,10 do
-            local dx,dz = irange(0,10),irange(0,10)
-            local ch =  makeChar(lastControlX+dx,lastControlZ+dz, charDeck, 1 )
-          end          
+          conn:emit( "debugPutChar", { x=lastControlX,z=lastControlZ } )
+--          for i=1,10 do
+--            local dx,dz = irange(0,10),irange(0,10)
+--            local ch =  makeChar(lastControlX+dx,lastControlZ+dz, charDeck, 1 )
+--          end
         end        
       end
       if k == 109 then --m
         if lastControlX then
           conn:emit( "debugSetCellType", { x=lastControlX,z=lastControlZ,t= CELLTYPE.WOODDEPO } )
-
         end        
       end
       if k == 110 then --n
@@ -584,6 +584,9 @@ function onKeyboardEvent(k,dn)
           local ch =   makeChar(lastControlX,lastControlZ, charDeck, 34 )
         end
       end
+      if k == 113 then --q
+
+      end      
       if k == 117 then --u
         if lastControlX then
           conn:emit("debugModifyLand", {x=lastControlX, z=lastControlZ, mod=1 } )
@@ -1181,12 +1184,13 @@ conn:on("complete", function()
         appendLog( arg.text )
       end)
     conn:on("getFieldRectResult", function(arg)
-        local ss = ""
-        if arg.hdata then
-          ss = "ndata:".. #arg.hdata .. #arg.tdata .. #arg.mhdata .. " objdatan:" .. #arg.objdata
-        end
-
---        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip, ss )
+--        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip )
+        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "chars:", arg.chars, #arg.chars )
+        for i,ch in ipairs(arg.chars) do
+          for k,v in pairs(ch) do
+            print("char: kv:",k,v)
+          end          
+        end        
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 then
 --          print("getFieldRectResult data zoomLevel is too small: arg:", arg.skip, " curZL:", currentZoomLevel )
