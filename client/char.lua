@@ -6,9 +6,12 @@ CHARSTATE={
 
 
 CHARMOVE_SEEK_SEC = 1
-  
+CHAR_OUTDATE_SEC = 3
+
+charIDs={}
 chars={}
-function makeChar(x,z,deck, baseIndex )
+function makeChar(id,x,z,deck, baseIndex )
+  assert(baseIndex)
   local h = getFieldHeight(x,z)
   if not h then
     print("makeChar: invalid coord or no chunk?:",x,z)
@@ -17,6 +20,7 @@ function makeChar(x,z,deck, baseIndex )
     
   local ch = MOAIProp.new()
 
+  ch.id = id
   ch.baseIndex = baseIndex
   ch.moveStartAt = 0
 
@@ -43,20 +47,19 @@ function makeChar(x,z,deck, baseIndex )
       self:setLoc(xx,yy,zz)
     else
       self:seekLoc(xx,yy,zz, CHARMOVE_SEEK_SEC, MOAIEaseType.LINEAR )
-      self.moveStartAt = now()
     end
+    self.moveStartAt = now()
     self.gridX, self.gridZ = x,z    
     self:setState(CHARSTATE.WALK)
   end
 
-  -- scrollX,Z
-  function ch:updateLoc(scrlx,scrlz)
-    local xx,yy,zz = getFieldCellCenterLog(self.gridX,self.gridZ,false)
-    if not xx then return end
-    self:setLoc( xx + self.ofsX, yy + self.ofsY , zz + self.ofsZ)
-  end
     
   function ch:poll(t)
+    if t > self.moveStartAt + CHAR_OUTDATE_SEC then
+      self.outdated = true
+      return
+    end
+    
     self.cnt = self.cnt + 1
     local ind
     if self.state == CHARSTATE.STAND then
@@ -81,19 +84,19 @@ function makeChar(x,z,deck, baseIndex )
     end
         
     -- debug move
-    if self.baseIndex == 1 then
-      if not self.debugcnt then self.debugcnt = 0 end
-      self.debugcnt = self.debugcnt + 1
-      if self.debugcnt % 100 == 0 then
-        local nx,nz = self.gridX, self.gridZ
-        if birandom() then
-          nx,nz = self.gridX + choose({-1,1}), self.gridZ
-        else
-          nx,nz = self.gridX, self.gridZ + choose({-1,1})
-        end
-        self:moveToGrid(nx,nz)
-      end
-    end
+--     if self.baseIndex == 1 then
+--       if not self.debugcnt then self.debugcnt = 0 end
+--       self.debugcnt = self.debugcnt + 1
+--       if self.debugcnt % 100 == 0 then
+--         local nx,nz = self.gridX, self.gridZ
+--         if birandom() then
+--           nx,nz = self.gridX + choose({-1,1}), self.gridZ
+--         else
+--           nx,nz = self.gridX, self.gridZ + choose({-1,1})
+--         end
+--         self:moveToGrid(nx,nz)
+--       end
+--     end
     
   end
   
@@ -101,12 +104,20 @@ function makeChar(x,z,deck, baseIndex )
 
   charLayer:insertProp(ch)
   table.insert(chars,ch)
+  charIDs[id] = ch
   return ch
 end
 
 function pollChars(t)
+  local toRemove={}
   for i,v in ipairs(chars) do
     v:poll(t)
+    if v.outdated then
+      print("outdated:", v.id, v.moveStartAt,t )
+      charLayer:removeProp(v)
+      charIDs[v.id] = nil
+      table.remove(chars,i)
+      break -- TODO: can remove only 1 char within a loop
+    end    
   end
-  
 end

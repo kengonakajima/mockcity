@@ -302,7 +302,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
             z2 =  self.vz + CHUNKSZ*self.zoomLevel + 1*self.zoomLevel,
             skip = self.zoomLevel
           } )
-          self.state = "loading"
+        self.state = "loading"
       end
     end
   end
@@ -568,10 +568,7 @@ function onKeyboardEvent(k,dn)
       if k == 108 then --l
         if lastControlX then
           conn:emit( "debugPutChar", { x=lastControlX,z=lastControlZ } )
---          for i=1,10 do
---            local dx,dz = irange(0,10),irange(0,10)
---            local ch =  makeChar(lastControlX+dx,lastControlZ+dz, charDeck, 1 )
---          end
+          trySendGetChars()
         end        
       end
       if k == 109 then --m
@@ -581,7 +578,7 @@ function onKeyboardEvent(k,dn)
       end
       if k == 110 then --n
         if lastControlX then
-          local ch =   makeChar(lastControlX,lastControlZ, charDeck, 34 )
+          local ch =   makeChar(1,lastControlX,lastControlZ, charDeck, 34 )
         end
       end
       if k == 113 then --q
@@ -814,6 +811,7 @@ function ChunkTable(absW,absH,absElev)
     end    
   end
 
+  
   -- centerx, centerz :grid
   function ct:poll(zoomlevel, centergx, centergz )
     local centerx, centerz = centergx, centergz
@@ -858,6 +856,12 @@ function ChunkTable(absW,absH,absElev)
         end
         ch:poll()
       end)
+    
+    -- widest
+    local szDiff = r * CHUNKSZ * zoomlevel
+    self.minGridX, self.minGridZ = centergx - szDiff, centergz - szDiff
+    self.maxGridX, self.maxGridZ = centergx + szDiff, centergz + szDiff
+    
   end  
   
   return ct
@@ -1192,20 +1196,11 @@ conn:on("complete", function()
           end          
         end        
         -- ignore data that is too late
-        if arg.skip < currentZoomLevel/2 then
---          print("getFieldRectResult data zoomLevel is too small: arg:", arg.skip, " curZL:", currentZoomLevel )
-          return
-        end
-        if arg.skip > currentZoomLevel*2 then
---          print("getFieldRectResult data zoomLevel is too large: arg:", arg.skip, " curZL:", currentZoomLevel )
-          return
-        end
+        if arg.skip < currentZoomLevel/2 then return end
+        if arg.skip > currentZoomLevel*2 then return end
         
         local ch = chunkTable:getGrid(arg.skip, arg.x1,arg.z1)
-        if not ch then
---          print("no chunk, ignore data:", arg.x1, arg.z1 )
-          return
-        end
+        if not ch then return end
         
         ch.zoomLevel = arg.skip
         ch:setData( arg.tdata, arg.hdata, arg.mhdata, arg.objdata )
@@ -1235,9 +1230,21 @@ conn:on("complete", function()
             end
           end)
       end)
+    conn:on("getCharsRectResult", function(arg)
+        print("getCharsRectResult:",arg.x1,arg.z1,arg.x2,arg.z2, #arg.data )
+        for i,v in ipairs(arg.data) do
+          local ch = charIDs[v.id]
+          if not ch then
+            ch = makeChar(v.id, v.posx, v.posz, charDeck, 1 )
+          else
+            ch:moveToGrid(v.posx,v.posz)
+          end          
+        end        
+      end)
     conn:on("cameraPos", function(arg)
         setWorldLoc(  arg.x * CELLUNITSZ,  arg.z * CELLUNITSZ )
       end)
+
   end)
 
 function trySendPing(s)
@@ -1247,6 +1254,12 @@ function trySendPing(s)
     conn:emit("ping",{status=s,time=t})
     lastPingAt = t
   end  
+end
+function trySendGetChars()
+  if chunkTable and conn then
+    print("minmax:", chunkTable.minGridX, chunkTable.minGridZ, chunkTable.maxGridX, chunkTable.maxGridZ )
+    conn:emit("getCharsRect", { x1=chunkTable.minGridX, z1=chunkTable.minGridZ, x2=chunkTable.maxGridX, z2=chunkTable.maxGridZ } )
+  end
 end
 
 function makeDebugBullet(x,y,z, dx,dy,dz)
@@ -1260,13 +1273,15 @@ function makeDebugBullet(x,y,z, dx,dy,dz)
   return p
 end
 
+
+
 ---------------------
 
 
 th = MOAICoroutine.new()
 th:run(function()
     local xrot,frameCnt = 0,0
-    local lastPrintAt = 0
+    local lastSecondlyAt = 0
     local prevTime = 0
     while true do
       local t = now()
@@ -1276,8 +1291,8 @@ th:run(function()
       
       -- game status
       frameCnt = frameCnt + 1
-      if lastPrintAt < t - 1 then
-        lastPrintAt = t
+      if lastSecondlyAt < t - 1 then
+        lastSecondlyAt = t
         local x,z = lastControlX or 0, lastControlZ or 0
         local y = nil
         if chunkTable then y = getFieldHeight(x,z) end
@@ -1293,8 +1308,12 @@ th:run(function()
         local cx,cy,cz = camera:getLoc()        
         local s = string.format("fps:%d zoom:%d cur:%d,%d,%d cam:%d,%d,%d chk:%d ch:%d rtt:%dms [%s]",frameCnt, currentZoomLevel, x,y,z, cx,cy,cz, chknum, chnum, rtt, curmode)
         statBox:set(s)
-        trySendPing(s)
         frameCnt = 0
+
+        -- secondly network
+        trySendPing(s)
+        trySendGetChars()
+
       end
 
       -- alloc/clean/update chunks
