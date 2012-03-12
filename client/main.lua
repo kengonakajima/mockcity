@@ -229,6 +229,12 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
           local o = self.objdata[ind]
           if o == OBJTYPE.TREE then
             table.insert( objary, { OBJMESHTYPE.BOARD, x,h,z, 26 } )
+          elseif o == OBJTYPE.CUT_TREE then
+            table.insert( objary, { OBJMESHTYPE.BOARD, x,h,z, 26+1 } )
+          elseif o == OBJTYPE.RIPE_FRUIT then
+            table.insert( objary, { OBJMESHTYPE.BOARD, x,h,z, 26+8 } )
+          elseif o == OBJTYPE.EMPTY_FRUIT then
+            table.insert( objary, { OBJMESHTYPE.BOARD, x,h,z, 26+8+1 } )            
           end                      
         end
       end

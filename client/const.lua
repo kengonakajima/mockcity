@@ -11,4 +11,7 @@ CELLTYPE={
 OBJTYPE = {
   NONE = 0,
   TREE = 1,
+  CUT_TREE = 2,
+  RIPE_FRUIT = 3,
+  EMPTY_FRUIT = 4,
 }
