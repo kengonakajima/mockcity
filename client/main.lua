@@ -578,7 +578,7 @@ function onKeyboardEvent(k,dn)
       end
       if k == 110 then --n
         if lastControlX then
-          local ch =   makeChar(1,lastControlX,lastControlZ, charDeck, 34 )
+--          local ch =   makeChar(1,lastControlX,lastControlZ, charDeck, 34 )
         end
       end
       if k == 113 then --q
@@ -1231,13 +1231,14 @@ conn:on("complete", function()
           end)
       end)
     conn:on("getCharsRectResult", function(arg)
-        print("getCharsRectResult:",arg.x1,arg.z1,arg.x2,arg.z2, #arg.data )
+        print("############ getCharsRectResult:",arg.x1,arg.z1,arg.x2,arg.z2, #arg.data )
         for i,v in ipairs(arg.data) do
           local ch = charIDs[v.id]
           if not ch then
-            ch = makeChar(v.id, v.posx, v.posz, charDeck, 1 )
-          else
-            ch:moveToGrid(v.posx,v.posz)
+            ch = makeChar(v.id, v.posx, v.posy, v.posz, charDeck, 1 )
+          end
+          if ch then
+            ch:moveToGrid(v.posx,v.posy,v.posz)
           end          
         end        
       end)
@@ -1257,7 +1258,7 @@ function trySendPing(s)
 end
 function trySendGetChars()
   if chunkTable and conn then
-    print("minmax:", chunkTable.minGridX, chunkTable.minGridZ, chunkTable.maxGridX, chunkTable.maxGridZ )
+--    print("minmax:", chunkTable.minGridX, chunkTable.minGridZ, chunkTable.maxGridX, chunkTable.maxGridZ )
     conn:emit("getCharsRect", { x1=chunkTable.minGridX, z1=chunkTable.minGridZ, x2=chunkTable.maxGridX, z2=chunkTable.maxGridZ } )
   end
 end

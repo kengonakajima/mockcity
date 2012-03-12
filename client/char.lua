@@ -10,13 +10,9 @@ CHAR_OUTDATE_SEC = 3
 
 charIDs={}
 chars={}
-function makeChar(id,x,z,deck, baseIndex )
+function makeChar(id,x,y,z,deck, baseIndex )
   assert(baseIndex)
-  local h = getFieldHeight(x,z)
-  if not h then
-    print("makeChar: invalid coord or no chunk?:",x,z)
-    return
-  end
+
     
   local ch = MOAIProp.new()
 
@@ -36,20 +32,21 @@ function makeChar(id,x,z,deck, baseIndex )
   local scl = 1.5
   ch:setScl(scl,scl,scl)
 
-  ch.ofsX,ch.ofsY,ch.ofsZ = 2, CELLUNITSZ/2-5, 0 -- + CELLUNITSZ/4
+  ch.ofsX,ch.ofsY,ch.ofsZ = CELLUNITSZ/2, CELLUNITSZ/2-5, CELLUNITSZ/2 
   ch:setRot(-45,0,0)
-  function ch:moveToGrid(x,z)
-    local xx,yy,zz = getFieldCellCenterLog(x,z,false)
-    if not xx then return end
-
-    xx,yy,zz =  xx+ self.ofsX, yy+self.ofsY, zz+self.ofsZ
-    if not self.gridX then
-      self:setLoc(xx,yy,zz)
+  function ch:moveToGrid(x,y,z)
+    local curx,cury,curz = self:getLoc()
+    x,y,z = x*CELLUNITSZ+ self.ofsX, y*CELLUNITSZ+self.ofsY, z*CELLUNITSZ+self.ofsZ
+--    print("moveToGrid: id:",self.id, int(x),int(y),int(z), int(curx),int(cury),int(curz)    )
+    if not self.prevX then
+      self:setLoc(x-0.1,y,z) -- need 0.1 to avoid moai bug?
     else
-      self:seekLoc(xx,yy,zz, CHARMOVE_SEEK_SEC, MOAIEaseType.LINEAR )
+      self:setLoc(self.prevX,self.prevY,self.prevZ)
     end
+    self:seekLoc(x,y,z, CHARMOVE_SEEK_SEC, MOAIEaseType.LINEAR )
+
     self.moveStartAt = now()
-    self.gridX, self.gridZ = x,z    
+    self.prevX, self.prevY, self.prevZ = x,y,z    
     self:setState(CHARSTATE.WALK)
   end
 
@@ -62,6 +59,7 @@ function makeChar(id,x,z,deck, baseIndex )
     
     self.cnt = self.cnt + 1
     local ind
+
     if self.state == CHARSTATE.STAND then
       ind = self.baseIndex
     elseif self.state == CHARSTATE.WALK then
@@ -69,6 +67,7 @@ function makeChar(id,x,z,deck, baseIndex )
     elseif self.state == CHARSTATE.DIE then
       ind = self.baseIndex + 24
     end
+
     if ind ~= self.lastInd then
       self.lastInd = ind
       local mesh = self.meshCache[ind]
@@ -100,7 +99,7 @@ function makeChar(id,x,z,deck, baseIndex )
     
   end
   
-  ch:moveToGrid(x,z)
+  ch:moveToGrid(x,y,z)
 
   charLayer:insertProp(ch)
   table.insert(chars,ch)
