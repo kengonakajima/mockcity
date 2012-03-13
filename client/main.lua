@@ -109,7 +109,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
     for i=1,#tdata do if hdata[i] ~= mhdata[i] then self.validMockNum = self.validMockNum + 1 end end
     self.objNum = 0
     for i,v in ipairs(objdata) do if v ~= OBJTYPE.NONE then self.objNum = self.objNum + 1 end end
-    print("setdata: objnum:", self.objNum, "zl:", currentZoomLevel )
+--    print("setdata: objnum:", self.objNum, "zl:", currentZoomLevel )
   end
     
   function p:updateHeightMap(editmode)
@@ -1206,19 +1206,22 @@ conn:on("complete", function()
       end)
     conn:on("getFieldRectResult", function(arg) -- gfrr
 --        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip )
-        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "chars:", arg.chars, #arg.chars, #arg.waypoints, #arg.waylinks )
-        for i,ch in ipairs(arg.chars) do
-          for k,v in pairs(ch) do
-            print("char: kv:",k,v)
-          end          
+        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2 )
+        if arg.chars then
+          for i,ch in ipairs(arg.chars) do
+            for k,v in pairs(ch) do
+              print("char: kv:",k,v)
+            end          
+          end
         end
+        
 --        for i,wp in ipairs(arg.waypoints) do
 --          print("wp: ", wp.x, wp.z )
 --          makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
         --        end
         local linep
         if currentZoomLevel == 1 then
-          linep = measure( function() return makeDebugLineProp( arg.waylinks) end )
+          linep = makeDebugLineProp( arg.waylinks) 
         end
         
         -- ignore data that is too late

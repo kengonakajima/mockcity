@@ -192,10 +192,10 @@ function makeHeightMapMesh(sz,w,h, lightRate, hdata, tdata, reddata, lineMode, h
           local baseVertOffset = (cellCnt-1) * 4
           local baseU, baseV = tileIndexToUV(CELLTYPE.WHITE)
           baseU, baseV = baseU + DECKSTEP/2, baseV + DECKSTEP/2
-          vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, 1,1,1 ) -- A
-          vb:pushVert( basex + sz, rightTopHeight, basez,  baseU,baseV, 1,1,1 ) -- B
-          vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,1,1 )  -- C
-          vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,1,1 ) -- D
+          vb:pushVert( basex, leftTopHeight, basez, baseU, baseV, 1,0.5,0 ) -- A
+          vb:pushVert( basex + sz, rightTopHeight, basez,  baseU,baseV, 1,0.5,0 ) -- B
+          vb:pushVert( basex + sz, rightBottomHeight, basez + sz, baseU,baseV, 1,0.5,0 )  -- C
+          vb:pushVert( basex, leftBottomHeight, basez + sz, baseU,baseV, 1,0.5,0 ) -- D
           -- A-B
           ib:pushIndex( 1 + baseVertOffset )
           ib:pushIndex( 2 + baseVertOffset )
@@ -431,8 +431,8 @@ function makeMultiLineMesh(ary)
   local baseU, baseV = tileIndexToUV(CELLTYPE.WHITE)
   baseU, baseV = baseU + DECKSTEP/2, baseV + DECKSTEP/2
   for i,v in ipairs(ary) do
-    vb:pushVert(v.x1,v.y1,v.z1, baseU, baseV, 1,1,1 )
-    vb:pushVert(v.x2,v.y2,v.z2, baseU, baseV, 1,1,1 )
+    vb:pushVert(v.x1,v.y1,v.z1, baseU, baseV, 0,1,1 )
+    vb:pushVert(v.x2,v.y2,v.z2, baseU, baseV, 0,1,1 )
     ib:pushIndex( (i-1)*2 + 1 )
     ib:pushIndex( (i-1)*2 + 2 )
   end  
