@@ -1206,7 +1206,10 @@ conn:on("complete", function()
 --          print("wp: ", wp.x, wp.z )
 --          makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
         --        end
-        local linep = measure( function() return makeDebugLineProp( arg.waylinks) end )
+        local linep
+        if currentZoomLevel == 1 then
+            linep = measure( function() return makeDebugLineProp( arg.waylinks) end )
+          end
         
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 then return end
