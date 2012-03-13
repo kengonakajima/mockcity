@@ -1193,14 +1193,19 @@ conn:on("complete", function()
         print("chatNotify. text:", arg.text )
         appendLog( arg.text )
       end)
-    conn:on("getFieldRectResult", function(arg)
+    conn:on("getFieldRectResult", function(arg) -- gfrr
 --        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip )
-        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "chars:", arg.chars, #arg.chars )
+        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "chars:", arg.chars, #arg.chars, #arg.waypoints )
         for i,ch in ipairs(arg.chars) do
           for k,v in pairs(ch) do
             print("char: kv:",k,v)
           end          
-        end        
+        end
+        for i,wp in ipairs(arg.waypoints) do
+          print("wp: ", wp.x, wp.z )
+          makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
+        end
+        
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 then return end
         if arg.skip > currentZoomLevel*2 then return end
@@ -1279,8 +1284,14 @@ function makeDebugBullet(x,y,z, dx,dy,dz)
   fieldLayer:insertProp(p)
   return p
 end
-
-
+function makeDebugRod(x,y,z)
+  local p = MOAIProp.new()
+  p:setDeck(cursorProp)
+  p:setScl(0.3,0.3,0.3)
+  p:setDeck(cursorDeck)
+  p:setLoc(x,y,z)
+  fieldLayer:insertProp(p)
+end
 
 ---------------------
 
