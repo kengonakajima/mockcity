@@ -365,3 +365,10 @@ assert( int(ratio(1,10,10,100,30))==3)
 function byte(s)
   return string.byte(s,1)
 end
+
+function avg(...)
+  local t = {...}
+  local total = 0
+  for _,v in ipairs(t) do total = total + v end
+  return total / #t
+end

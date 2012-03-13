@@ -54,8 +54,13 @@ viewport:setScale ( SCRW, SCRH )
 
 fieldLayer = MOAILayer.new()
 fieldLayer:setViewport(viewport)
-fieldLayer:setSortMode(MOAILayer.SORT_Z_ASCNDING ) -- don't need layer sort
+fieldLayer:setSortMode(MOAILayer.SORT_Z_ASCNDING ) 
 MOAISim.pushRenderPass(fieldLayer)
+
+objLayer = MOAILayer.new()
+objLayer:setViewport(viewport)
+objLayer:setSortMode(MOAILayer.SORT_Z_ASCNDING )
+MOAISim.pushRenderPass(objLayer)
 
 charLayer = MOAILayer.new()
 charLayer:setViewport(viewport)
@@ -64,7 +69,7 @@ MOAISim.pushRenderPass(charLayer)
 
 cursorLayer = MOAILayer.new()
 cursorLayer:setViewport(viewport)
-cursorLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING ) -- don't need layer sort
+cursorLayer:setSortMode(MOAILayer.SORT_Y_ASCNDING )
 MOAISim.pushRenderPass(cursorLayer)
 
 
@@ -215,7 +220,11 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
         for x=0,CHUNKSZ-1 do
           local ind = x + z*(CHUNKSZ+1)+1
           local t = showtdata[ind]
-          local h = showhdata[ind]
+          local lth,rth,lbh,rbh =  showhdata[ind], showhdata[ind+1], showhdata[ind+(CHUNKSZ+1)], showhdata[ind+(CHUNKSZ+1)+1]
+          local maxh, minh = max( max(lth,lbh),max(rth,rbh) ), min( max(lth,lbh),max(rth,rbh) )
+          local h = avg( maxh, minh )
+            
+
           if t == CELLTYPE.WOODDEPO then
             local lt = showtdata[ind-1]
             local rt = showtdata[ind+1]
@@ -245,7 +254,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
         if not p then
           p = MOAIProp.new()
           self.objp = p
-          fieldLayer:insertProp(p)
+          objLayer:insertProp(p)
         end
         local fm = makeMultiObjMesh(objary,baseDeck )
         p:setDeck(fm)
@@ -253,8 +262,8 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 
         p:setColor(1,1,1,1)
         p:setCullMode( MOAIProp.CULL_NONE )
---        p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
-        p:setDepthTest(MOAIProp.DEPTH_TEST_DISABLE )
+        p:setDepthTest( MOAIProp.DEPTH_TEST_LESS_EQUAL )
+--        p:setDepthTest(MOAIProp.DEPTH_TEST_DISABLE )
       end
     end
     
@@ -316,7 +325,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   function p:clean()
 --    print("chunk clean:",self.zoomLevel,self.vx,self.vz)
     if self.mockp then fieldLayer:removeProp(self.mockp) end
-    if self.objp then fieldLayer:removeProp(self.objp) end
+    if self.objp then objLayer:removeProp(self.objp) end
     if self.linep then fieldLayer:removeProp(self.linep) end
     fieldLayer:removeProp(self)
     chunkTable:remove( self.zoomLevel, int(self.vx/CHUNKSZ/self.zoomLevel), int(self.vz/CHUNKSZ/self.zoomLevel) )
@@ -1029,6 +1038,7 @@ camera:setLoc ( 0, ZOOM_INITY, 800 )
 camera.flyUp = false
 
 fieldLayer:setCamera ( camera )
+objLayer:setCamera( camera )
 charLayer:setCamera( camera )
 cursorLayer:setCamera ( camera )
 
@@ -1208,8 +1218,8 @@ conn:on("complete", function()
         --        end
         local linep
         if currentZoomLevel == 1 then
-            linep = measure( function() return makeDebugLineProp( arg.waylinks) end )
-          end
+          linep = measure( function() return makeDebugLineProp( arg.waylinks) end )
+        end
         
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 then return end
