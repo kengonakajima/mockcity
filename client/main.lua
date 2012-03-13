@@ -1195,7 +1195,7 @@ conn:on("complete", function()
       end)
     conn:on("getFieldRectResult", function(arg) -- gfrr
 --        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip )
-        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "chars:", arg.chars, #arg.chars, #arg.waypoints )
+        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "chars:", arg.chars, #arg.chars, #arg.waypoints, #arg.waylinks )
         for i,ch in ipairs(arg.chars) do
           for k,v in pairs(ch) do
             print("char: kv:",k,v)
@@ -1205,6 +1205,11 @@ conn:on("complete", function()
           print("wp: ", wp.x, wp.z )
           makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
         end
+        for i,wl in ipairs(arg.waylinks) do
+--          print("wl: ", wl.fromx, wl.fromy, wl.fromz, wl.tox, wl.toy, wl.toz )
+          makeDebugLine(wl.fromx*CELLUNITSZ, wl.fromy*CELLUNITSZ, wl.fromz*CELLUNITSZ, wl.tox*CELLUNITSZ, wl.toy*CELLUNITSZ, wl.toz*CELLUNITSZ )
+        end        
+
         
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 then return end
@@ -1242,7 +1247,7 @@ conn:on("complete", function()
           end)
       end)
     conn:on("getCharsRectResult", function(arg)
-        print("############ getCharsRectResult:",arg.x1,arg.z1,arg.x2,arg.z2, #arg.data )
+--        print("############ getCharsRectResult:",arg.x1,arg.z1,arg.x2,arg.z2, #arg.data )
         for i,v in ipairs(arg.data) do
           local ch = charIDs[v.id]
           if not ch then
@@ -1291,7 +1296,18 @@ function makeDebugRod(x,y,z)
   p:setDeck(cursorDeck)
   p:setLoc(x,y,z)
   fieldLayer:insertProp(p)
+  return p
 end
+function makeDebugLine(x1,y1,z1,x2,y2,z2)
+  local p = MOAIProp.new()
+  local debugDiff = 1 -- todo: moai's bug? can't draw line if y is same..
+  local mesh = makeLineMesh(0,0+debugDiff,0,x2-x1,y2-y1,z2-z1 )
+  p:setDeck(mesh)
+  p:setLoc(x1,y1+0.2,z1)
+  fieldLayer:insertProp(p)
+  return p  
+end
+
 
 ---------------------
 
