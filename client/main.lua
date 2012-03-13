@@ -317,6 +317,7 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
 --    print("chunk clean:",self.zoomLevel,self.vx,self.vz)
     if self.mockp then fieldLayer:removeProp(self.mockp) end
     if self.objp then fieldLayer:removeProp(self.objp) end
+    if self.linep then fieldLayer:removeProp(self.linep) end
     fieldLayer:removeProp(self)
     chunkTable:remove( self.zoomLevel, int(self.vx/CHUNKSZ/self.zoomLevel), int(self.vz/CHUNKSZ/self.zoomLevel) )
   end
@@ -1201,15 +1202,11 @@ conn:on("complete", function()
             print("char: kv:",k,v)
           end          
         end
-        for i,wp in ipairs(arg.waypoints) do
-          print("wp: ", wp.x, wp.z )
-          makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
-        end
-        for i,wl in ipairs(arg.waylinks) do
---          print("wl: ", wl.fromx, wl.fromy, wl.fromz, wl.tox, wl.toy, wl.toz )
-          makeDebugLine(wl.fromx*CELLUNITSZ, wl.fromy*CELLUNITSZ, wl.fromz*CELLUNITSZ, wl.tox*CELLUNITSZ, wl.toy*CELLUNITSZ, wl.toz*CELLUNITSZ )
-        end        
-
+--        for i,wp in ipairs(arg.waypoints) do
+--          print("wp: ", wp.x, wp.z )
+--          makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
+        --        end
+        local linep = measure( function() return makeDebugLineProp( arg.waylinks) end )
         
         -- ignore data that is too late
         if arg.skip < currentZoomLevel/2 then return end
@@ -1222,6 +1219,8 @@ conn:on("complete", function()
         ch:setData( arg.tdata, arg.hdata, arg.mhdata, arg.objdata )
         ch:updateHeightMap(ch.editMode)
         ch.state = "loaded"
+        ch.linep = linep
+        
         -- clean lower level 4 chunks when load finished
         local chx,chz = int(arg.x1/CHUNKSZ/arg.skip), int(arg.z1/CHUNKSZ/arg.skip)
         if arg.skip > 1 then
@@ -1298,12 +1297,16 @@ function makeDebugRod(x,y,z)
   fieldLayer:insertProp(p)
   return p
 end
-function makeDebugLine(x1,y1,z1,x2,y2,z2)
-  local p = MOAIProp.new()
+function makeDebugLineProp(lines)
   local debugDiff = 1 -- todo: moai's bug? can't draw line if y is same..
-  local mesh = makeLineMesh(0,0+debugDiff,0,x2-x1,y2-y1,z2-z1 )
+  local t = {}
+  for i,v in ipairs(lines) do
+    t[i] = { x1 = v.fromx, y1 = v.fromy + debugDiff, z1 = v.fromz, x2 = v.tox, y2 = v.toy, z2 = v.toz }
+  end
+  local mesh = makeMultiLineMesh(t)
+  local p = MOAIProp.new()
   p:setDeck(mesh)
-  p:setLoc(x1,y1+0.2,z1)
+  p:setLoc(x1,y1,z1)
   fieldLayer:insertProp(p)
   return p  
 end

@@ -11,6 +11,15 @@ function now()
   return MOAISim.getDeviceTime()
 end
 
+function measure(f)
+  local st = now()
+  local ret = f()
+  local et = now()
+  print("measure:", (et-st) )
+  return ret
+end
+
+
 function birandom()
   if math.random() < 0.5 then
     return true

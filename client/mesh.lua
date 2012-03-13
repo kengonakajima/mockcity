@@ -423,17 +423,19 @@ function makeMultiObjMesh(ary,deck )
 end
 
 
-function makeLineMesh(x1,y1,z1,x2,y2,z2)
-  local vertNum = 2
-  local vb = makeVertexBuffer(2)
-  local ib = makeIndexBuffer(2)
+function makeMultiLineMesh(ary)
+  local vertNum = #ary * 2
+  local vb = makeVertexBuffer(vertNum)
+  local ib = makeIndexBuffer(vertNum)
 
   local baseU, baseV = tileIndexToUV(CELLTYPE.WHITE)
   baseU, baseV = baseU + DECKSTEP/2, baseV + DECKSTEP/2
-  vb:pushVert(x1,y1,z1, baseU, baseV, 1,1,1 )
-  vb:pushVert(x2,y2,z2, baseU, baseV, 1,1,1 )
-  ib:pushIndex( 1 )
-  ib:pushIndex( 2 )
+  for i,v in ipairs(ary) do
+    vb:pushVert(v.x1,v.y1,v.z1, baseU, baseV, 1,1,1 )
+    vb:pushVert(v.x2,v.y2,v.z2, baseU, baseV, 1,1,1 )
+    ib:pushIndex( (i-1)*2 + 1 )
+    ib:pushIndex( (i-1)*2 + 2 )
+  end  
   vb:bless()
   return makeMesh( baseDeck, vb, ib, MOAIMesh.GL_LINES )
 end
