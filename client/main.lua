@@ -309,18 +309,22 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
   function p:poll()
     if self.state == "init" then
       if conn then
---        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel, "curzl:", currentZoomLevel  )      
-        conn:emit("getFieldRect", {
-            x1 = self.vx,
-            z1 = self.vz,
-            x2 = self.vx + CHUNKSZ*self.zoomLevel + 1*self.zoomLevel,
-            z2 =  self.vz + CHUNKSZ*self.zoomLevel + 1*self.zoomLevel,
-            skip = self.zoomLevel
-          } )
+--        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel, "curzl:", currentZoomLevel  )
+        self:sendGetField()
         self.state = "loading"
       end
     end
   end
+
+  function p:sendGetField()
+    conn:emit("getFieldRect", {
+        x1 = self.vx,
+        z1 = self.vz,
+        x2 = self.vx + CHUNKSZ*self.zoomLevel + 1*self.zoomLevel,
+        z2 =  self.vz + CHUNKSZ*self.zoomLevel + 1*self.zoomLevel,
+        skip = self.zoomLevel
+      } )
+  end  
 
   function p:clean()
 --    print("chunk clean:",self.zoomLevel,self.vx,self.vz)
@@ -788,7 +792,7 @@ function ChunkTable(absW,absH,absElev)
     assert(t)
     return t[i]
   end
-  
+
   function ct:getGrid(zoomlevel, gridx,gridz)
     local chx,chz = int(gridx/CHUNKSZ/zoomlevel), int(gridz/CHUNKSZ/zoomlevel)
     local i = self:ind(zoomlevel,chx,chz)
@@ -802,7 +806,8 @@ function ChunkTable(absW,absH,absElev)
     local i = self:ind(zoomlevel, chx,chz)
     self:clearList(t[i])
     t[i] = nil
-  end    
+  end
+  
   function ct:clearList(ch)
     assert(ch)
     for i,v in ipairs( self.list ) do
@@ -1275,6 +1280,11 @@ conn:on("complete", function()
       end)
     conn:on("cameraPos", function(arg)
         setWorldLoc(  arg.x * CELLUNITSZ,  arg.z * CELLUNITSZ )
+      end)
+    conn:on("fieldChangeNotify", function(arg)
+        appendLog( "chg:" .. arg.x .. "," .. arg.z )
+        local chk = chunkTable:getGrid(currentZoomLevel,arg.x,arg.z)
+        chk:sendGetField()
       end)
 
   end)
