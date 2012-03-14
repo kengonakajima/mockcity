@@ -28,7 +28,7 @@ rpc = mprpc.create(net,msgpack)
 
 -----------------    
 
-SCRW, SCRH = 960, 640
+SCRW, SCRH = 1280, 768
 
 ZOOM_INITY = 1000
 ZOOM_MINY = 500
@@ -1333,6 +1333,8 @@ function makeDebugLineProp(lines)
   local p = MOAIProp.new()
   p:setDeck(mesh)
   p:setLoc(x1,y1,z1)
+  p:setBlendMode ( MOAIProp2D.GL_SRC_ALPHA, MOAIProp2D.GL_ONE_MINUS_SRC_ALPHA )
+  p:setColor(1,1,1,0.1)
   fieldLayer:insertProp(p)
   return p  
 end
