@@ -423,7 +423,7 @@ function makeMultiObjMesh(ary,deck )
 end
 
 
-function makeMultiLineMesh(ary)
+function makeMultiLineMesh(ary,r,g,b)
   local vertNum = #ary * 2
   local vb = makeVertexBuffer(vertNum)
   local ib = makeIndexBuffer(vertNum)
@@ -431,8 +431,8 @@ function makeMultiLineMesh(ary)
   local baseU, baseV = tileIndexToUV(CELLTYPE.WHITE)
   baseU, baseV = baseU + DECKSTEP/2, baseV + DECKSTEP/2
   for i,v in ipairs(ary) do
-    vb:pushVert(v.x1,v.y1,v.z1, baseU, baseV, 0,1,1 )
-    vb:pushVert(v.x2,v.y2,v.z2, baseU, baseV, 0,1,1 )
+    vb:pushVert(v.x1,v.y1,v.z1, baseU, baseV, r,g,b)
+    vb:pushVert(v.x2,v.y2,v.z2, baseU, baseV, r,g,b)
     ib:pushIndex( (i-1)*2 + 1 )
     ib:pushIndex( (i-1)*2 + 2 )
   end  

@@ -39,7 +39,7 @@ CURSOR_MAXY = 2000
 CHUNKSZ = 16
 CELLUNITSZ = 32
 
-GETRECT_CONCURRENT_NUM = 2
+GETRECT_CONCURRENT_NUM = 1
 
 -----------------
 
@@ -1335,12 +1335,12 @@ function makeDebugLineProp(lines)
   for i,v in ipairs(lines) do
     t[i] = { x1 = v.fromx, y1 = v.fromy + debugDiff, z1 = v.fromz, x2 = v.tox, y2 = v.toy, z2 = v.toz }
   end
-  local mesh = makeMultiLineMesh(t)
+  local mesh = makeMultiLineMesh(t,0,1,1)
   local p = MOAIProp.new()
   p:setDeck(mesh)
   p:setLoc(x1,y1,z1)
   p:setBlendMode ( MOAIProp2D.GL_SRC_ALPHA, MOAIProp2D.GL_ONE_MINUS_SRC_ALPHA )
-  p:setColor(1,1,1,0.1)
+  p:setColor(1,1,1,0.15)
   fieldLayer:insertProp(p)
   return p  
 end
