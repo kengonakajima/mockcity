@@ -1230,7 +1230,7 @@ conn:on("complete", function()
 --          print("wp: ", wp.x, wp.z )
 --          makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
         --        end
-        local linep
+        local linep 
         if currentZoomLevel == 1 then
           linep = makeDebugLineProp( arg.waylinks) 
         end
@@ -1246,6 +1246,7 @@ conn:on("complete", function()
         ch:setData( arg.tdata, arg.hdata, arg.mhdata, arg.objdata )
         ch:updateHeightMap(ch.editMode)
         ch.state = "loaded"
+        if ch.linep then fieldLayer:removeProp(ch.linep) end
         ch.linep = linep
         
         -- clean lower level 4 chunks when load finished
