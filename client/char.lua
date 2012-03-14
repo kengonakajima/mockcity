@@ -1,4 +1,4 @@
-CHARSTATE={
+CHARANIMTYPE={
   STAND = 1,
   WALK = 2,
   DIE = 3
@@ -22,19 +22,19 @@ function makeChar(id,x,y,z,deck, baseIndex )
 
   ch.meshCache = {}
   
-  function ch:setState(st)
-    self.state = st
+  function ch:setAnimType(t)
+    self.animtype = t
     self.cnt = 0
   end
 
-  ch:setState( CHARSTATE.STAND )
+  ch:setAnimType( CHARANIMTYPE.STAND )
 
   local scl = 1.5
   ch:setScl(scl,scl,scl)
 
   ch.ofsX,ch.ofsY,ch.ofsZ = CELLUNITSZ/2, CELLUNITSZ/2-5, CELLUNITSZ/2 
   ch:setRot(-45,0,0)
-  function ch:moveToGrid(x,y,z)
+  function ch:moveToGrid(x,y,z,state)
     local curx,cury,curz = self:getLoc()
     x,y,z = x*CELLUNITSZ+ self.ofsX, y*CELLUNITSZ+self.ofsY, z*CELLUNITSZ+self.ofsZ
 --    print("moveToGrid: id:",self.id, int(x),int(y),int(z), int(curx),int(cury),int(curz)    )
@@ -46,8 +46,24 @@ function makeChar(id,x,y,z,deck, baseIndex )
     self:seekLoc(x,y,z, CHARMOVE_SEEK_SEC, MOAIEaseType.LINEAR )
 
     self.moveStartAt = now()
+
+    
+    if state == CHARSTATE.DIED then
+      self:setAnimType(CHARANIMTYPE.DIE )
+    else
+      if x ~= self.prevX or z ~= self.prevZ then
+        self:setAnimType(CHARANIMTYPE.WALK )
+      else
+        self:setAnimType(CHARANIMTYPE.STAND)
+      end
+    end
+
+    if state == CHARSTATE.NORMAL then
+      self:setColor(1,1,1)
+    else
+      self:setColor(1,0.5,0.5)
+    end
     self.prevX, self.prevY, self.prevZ = x,y,z    
-    self:setState(CHARSTATE.WALK)
   end
 
     
@@ -60,11 +76,11 @@ function makeChar(id,x,y,z,deck, baseIndex )
     self.cnt = self.cnt + 1
     local ind
 
-    if self.state == CHARSTATE.STAND then
+    if self.animtype == CHARANIMTYPE.STAND then
       ind = self.baseIndex
-    elseif self.state == CHARSTATE.WALK then
+    elseif self.animtype == CHARANIMTYPE.WALK then
       ind = self.baseIndex + 1 + int( self.cnt / 10 ) % 2
-    elseif self.state == CHARSTATE.DIE then
+    elseif self.animtype == CHARANIMTYPE.DIE then
       ind = self.baseIndex + 24
     end
 
@@ -78,8 +94,8 @@ function makeChar(id,x,y,z,deck, baseIndex )
       ch:setDeck(mesh)            
     end
 
-    if self.state == CHARSTATE.WALK and self.moveStartAt < (t-CHARMOVE_SEEK_SEC) then
-      self:setState( CHARSTATE.STAND )
+    if self.animtype == CHARANIMTYPE.WALK and self.moveStartAt < (t-CHARMOVE_SEEK_SEC) then
+      self:setAnimType( CHARANIMTYPE.STAND )
     end
         
     -- debug move

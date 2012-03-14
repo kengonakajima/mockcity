@@ -601,7 +601,7 @@ function onKeyboardEvent(k,dn)
       end
       if k == 110 then --n
         if lastControlX then
---          local ch =   makeChar(1,lastControlX,lastControlZ, charDeck, 34 )
+
         end
       end
       if k == 113 then --q
@@ -1280,7 +1280,7 @@ conn:on("complete", function()
             ch = makeChar(v.id, v.posx, v.posy, v.posz, charDeck, 1 )
           end
           if ch then
-            ch:moveToGrid(v.posx,v.posy,v.posz)
+            ch:moveToGrid(v.posx,v.posy,v.posz,v.state)
           end          
         end        
       end)

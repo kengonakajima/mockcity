@@ -15,3 +15,9 @@ OBJTYPE = {
   RIPE_FRUIT = 3,
   EMPTY_FRUIT = 4,
 }
+
+CHARSTATE = {
+  NORMAL = 1,
+  HUNGRY = 2,
+  DIED = 3
+}
