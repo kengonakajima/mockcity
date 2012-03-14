@@ -1215,21 +1215,8 @@ conn:on("complete", function()
       end)
     conn:on("getFieldRectResult", function(arg) -- gfrr
         chunkTable.getRectCounter:put()
-        
---        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip )
         print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, chunkTable.getRectCounter.n )
-        if arg.chars then
-          for i,ch in ipairs(arg.chars) do
-            for k,v in pairs(ch) do
-              print("char: kv:",k,v)
-            end          
-          end
-        end
-        
---        for i,wp in ipairs(arg.waypoints) do
---          print("wp: ", wp.x, wp.z )
---          makeDebugRod( wp.x * CELLUNITSZ, wp.y * CELLUNITSZ, wp.z * CELLUNITSZ )
-        --        end
+
         local linep 
         if currentZoomLevel == 1 then
           linep = makeDebugLineProp( arg.waylinks) 
@@ -1289,7 +1276,7 @@ conn:on("complete", function()
         setWorldLoc(  arg.x * CELLUNITSZ,  arg.z * CELLUNITSZ )
       end)
     conn:on("fieldChangeNotify", function(arg)
-        appendLog( "chg:" .. arg.x .. "," .. arg.z )
+--        appendLog( "chg:" .. arg.x .. "," .. arg.z )
         local chk = chunkTable:getGrid(currentZoomLevel,arg.x,arg.z)
         chk:sendGetField()
       end)
