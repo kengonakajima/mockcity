@@ -372,3 +372,27 @@ function avg(...)
   for _,v in ipairs(t) do total = total + v end
   return total / #t
 end
+
+function Counter(max)
+  local t = { max = max, n = max }
+  function t:get()
+    if self.n > 0 then
+      self.n = self.n - 1
+      return true
+    else
+      return false
+    end
+  end
+  function t:put()
+    if self.n < self.max then
+      self.n = self.n + 1
+      return true
+    else
+      return false
+    end    
+  end
+  return t
+end
+
+      
+

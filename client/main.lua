@@ -39,6 +39,7 @@ CURSOR_MAXY = 2000
 CHUNKSZ = 16
 CELLUNITSZ = 32
 
+GETRECT_CONCURRENT_NUM = 2
 
 -----------------
 
@@ -306,12 +307,14 @@ function makeChunkHeightMapProp(vx,vz,zoomlevel)
     return (  winx2 >= -margin and winy2 >= -margin and winx1 <= SCRW+margin and winy1 <= SCRH+margin )
   end
           
-  function p:poll()
+  function p:poll(counter)
     if self.state == "init" then
       if conn then
 --        print("loading rect:", self.state, "xz:", self.vx, self.vz, "zl:", self.zoomLevel, "curzl:", currentZoomLevel  )
-        self:sendGetField()
-        self.state = "loading"
+        if counter:get() then
+          self:sendGetField()
+          self.state = "loading"
+        end        
       end
     end
   end
@@ -754,7 +757,8 @@ function ChunkTable(absW,absH,absElev)
   local ct = {
     absWidth = absW,
     absHeight = absH,
-    absMaxElevation = absElev
+    absMaxElevation = absElev,
+    getRectCounter = Counter(GETRECT_CONCURRENT_NUM)
   }
   ct.list = {} 
   ct.zoomary = {}  -- array of arrays of chunks. ch = [zoomlevel][x + z*w]
@@ -875,7 +879,7 @@ function ChunkTable(absW,absH,absElev)
         if not ch:inWindow(300) and ch.state == "loaded" then
           ch:clean()
         end
-        ch:poll()
+         ch:poll(self.getRectCounter)
       end)
     
     -- widest
@@ -1210,8 +1214,10 @@ conn:on("complete", function()
         appendLog( arg.text )
       end)
     conn:on("getFieldRectResult", function(arg) -- gfrr
+        chunkTable.getRectCounter:put()
+        
 --        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, "skp:", arg.skip )
-        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2 )
+        print("getFieldRectResult:", arg.x1,arg.z1,arg.x2,arg.z2, chunkTable.getRectCounter.n )
         if arg.chars then
           for i,ch in ipairs(arg.chars) do
             for k,v in pairs(ch) do
