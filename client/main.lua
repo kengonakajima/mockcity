@@ -1278,7 +1278,7 @@ conn:on("complete", function()
     conn:on("fieldChangeNotify", function(arg)
 --        appendLog( "chg:" .. arg.x .. "," .. arg.z )
         local chk = chunkTable:getGrid(currentZoomLevel,arg.x,arg.z)
-        chk:sendGetField()
+        if chk then chk:sendGetField() end 
       end)
 
   end)
