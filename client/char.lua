@@ -5,7 +5,7 @@ CHARANIMTYPE={
 }
 
 
-CHARMOVE_SEEK_SEC = 0.8
+
 CHAR_OUTDATE_SEC = 3
 
 charIDs={}
@@ -34,27 +34,37 @@ function makeChar(id,x,y,z,deck, baseIndex )
 
   ch.ofsX,ch.ofsY,ch.ofsZ = CELLUNITSZ/2, CELLUNITSZ/2-5, CELLUNITSZ/2 
   ch:setRot(-45,0,0)
-  function ch:moveToGrid(x,y,z,state)
+  function ch:moveToGrid(x,y,z,state,nextms)
     local curx,cury,curz = self:getLoc()
     x,y,z = x*CELLUNITSZ+ self.ofsX, y*CELLUNITSZ+self.ofsY, z*CELLUNITSZ+self.ofsZ
---    print("moveToGrid: id:",self.id, int(x),int(y),int(z), int(curx),int(cury),int(curz)    )
-    if not self.prevX then
-      self:setLoc(x-0.1,y,z) -- need 0.1 to avoid moai bug?
+    print("moveToGrid: nextms:", nextms )
+    
+    local seektime
+    if not self.nextms then
+      seektime = 1
     else
-      self:setLoc(self.prevX,self.prevY,self.prevZ)
+      seektime = (nextms - self.nextms) / 1000
     end
-    self:seekLoc(x,y,z, CHARMOVE_SEEK_SEC, MOAIEaseType.LINEAR )
+    self.nextms = nextms
 
+    print("seektime:",seektime)    
+    if seektime > 0 then
+      if not self.prevX then
+        self:setLoc(x-0.1,y,z) -- need 0.1 to avoid moai bug?
+      else
+        self:setLoc(self.prevX,self.prevY,self.prevZ)
+      end      
+      self:seekLoc(x,y,z, seektime, MOAIEaseType.LINEAR )
+      self.moveStopAt = self.moveStartAt + seektime + 1
+    end    
     self.moveStartAt = now()
-
+    print("start:",self.moveStartAt, "stop:", self.moveStopAt)
     
     if state == CHARSTATE.DIED then
       self:setAnimType(CHARANIMTYPE.DIE )
     else
       if x ~= self.prevX or z ~= self.prevZ then
         self:setAnimType(CHARANIMTYPE.WALK )
-      else
-        self:setAnimType(CHARANIMTYPE.STAND)
       end
     end
 
@@ -75,7 +85,6 @@ function makeChar(id,x,y,z,deck, baseIndex )
     
     self.cnt = self.cnt + 1
     local ind
-
     if self.animtype == CHARANIMTYPE.STAND then
       ind = self.baseIndex
     elseif self.animtype == CHARANIMTYPE.WALK then
@@ -94,24 +103,9 @@ function makeChar(id,x,y,z,deck, baseIndex )
       ch:setDeck(mesh)            
     end
 
-    if self.animtype == CHARANIMTYPE.WALK and self.moveStartAt < (t-CHARMOVE_SEEK_SEC) then
+    if self.animtype == CHARANIMTYPE.WALK and self.moveStopAt < t then
       self:setAnimType( CHARANIMTYPE.STAND )
     end
-        
-    -- debug move
---     if self.baseIndex == 1 then
---       if not self.debugcnt then self.debugcnt = 0 end
---       self.debugcnt = self.debugcnt + 1
---       if self.debugcnt % 100 == 0 then
---         local nx,nz = self.gridX, self.gridZ
---         if birandom() then
---           nx,nz = self.gridX + choose({-1,1}), self.gridZ
---         else
---           nx,nz = self.gridX, self.gridZ + choose({-1,1})
---         end
---         self:moveToGrid(nx,nz)
---       end
---     end
     
   end
   

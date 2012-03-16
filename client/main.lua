@@ -1268,7 +1268,7 @@ conn:on("complete", function()
             ch = makeChar(v.id, v.posx, v.posy, v.posz, charDeck, 1 )
           end
           if ch then
-            ch:moveToGrid(v.posx,v.posy,v.posz,v.state)
+            ch:moveToGrid(v.posx,v.posy,v.posz,v.state,v.nextms)
           end          
         end        
       end)
