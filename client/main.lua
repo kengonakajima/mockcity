@@ -1276,9 +1276,20 @@ conn:on("complete", function()
         setWorldLoc(  arg.x * CELLUNITSZ,  arg.z * CELLUNITSZ )
       end)
     conn:on("fieldChangeNotify", function(arg)
---        appendLog( "chg:" .. arg.x .. "," .. arg.z )
+        dump1("fieldChangeNotify", arg)
         local chk = chunkTable:getGrid(currentZoomLevel,arg.x,arg.z)
-        if chk then chk:sendGetField() end 
+        if chk then chk:sendGetField() end
+        if arg.type == CHANGETYPE.GET_RESOURCE then
+          local ch = charIDs[arg.id]
+          local deck = guiDeck
+          local ind
+          if arg.to == OBJTYPE.EMPTY_FRUIT then
+            ind = 49
+          end          
+          if ch and ind then
+            makeGetEffect( arg.x, arg.y, arg.z, ch, guiDeck, ind )
+          end          
+        end        
       end)
 
   end)
@@ -1473,7 +1484,9 @@ th:run(function()
           end        
         end
       end
-    
+
+      -- effects
+      pollEffects()
 
       -- chat
       if chatBox then chatBox:update(dt) end

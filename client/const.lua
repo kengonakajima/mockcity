@@ -21,3 +21,8 @@ CHARSTATE = {
   HUNGRY = 2,
   DIED = 3
 }
+
+CHANGETYPE = {
+  GET_RESOURCE = 1,
+  RENEW_RESOURCE = 2,
+}

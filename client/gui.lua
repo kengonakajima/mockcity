@@ -104,3 +104,32 @@ function updateButtonBGs()
     end
   end  
 end
+
+-- effects
+effects = {}
+function makeGetEffect( gridx, gridy, gridz, ch, deck, ind)
+  local tox,toy = fieldLayer:worldToWnd( ch:getLoc() )
+  local fromx,fromy = fieldLayer:worldToWnd( gridx*CELLUNITSZ, gridy*CELLUNITSZ, gridz*CELLUNITSZ)
+  fromx, fromy = fromx + CELLUNITSZ/2, fromy + CELLUNITSZ/2
+  print( "makeGetEffect:", gridx, gridy, gridz, ch, deck, ind, "from:", fromx, fromy, "to:", tox,toy )
+  local p = MOAIProp2D.new()
+  p:setDeck(deck)
+  p:setIndex(ind)
+  p:setScl(64,64)
+  p:setLoc(fromx-SCRW/2,SCRH/2-fromy)
+  p:seekLoc(tox-SCRW/2,SCRH/2-toy, 0.5)
+  p.cleanAt = now() + 0.5
+  hudLayer:insertProp(p)
+  table.insert(effects,p)
+  return p
+end
+
+function pollEffects()
+  local t = now()
+  for i,v in ipairs(effects) do
+    if v.cleanAt < t then
+      table.remove( effects, i )
+      hudLayer:removeProp(v)
+    end    
+  end  
+end

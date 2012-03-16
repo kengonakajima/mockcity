@@ -396,3 +396,6 @@ end
 
       
 
+function dump1(s,t)
+  for k,v in pairs(t) do print( s, k,v ) end
+end
