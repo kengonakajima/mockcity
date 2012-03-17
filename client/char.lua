@@ -50,11 +50,20 @@ function makeChar(id,x,y,z,deck, baseIndex )
     print("seektime:",seektime)    
     if seektime > 0 then
       if not self.prevX then
+        print("setloc 1:",x-0.1,y,z) 
         self:setLoc(x-0.1,y,z) -- need 0.1 to avoid moai bug?
       else
+        print("setloc 2:", self.prevX,self.prevY,self.prevZ)
         self:setLoc(self.prevX,self.prevY,self.prevZ)
-      end      
-      self:seekLoc(x,y,z, seektime, MOAIEaseType.LINEAR )
+      end
+      local ix,iy,iz = int(x) % 32,int(y) % 32,int(z)%32
+      print("XXXXXXXXXXXXX:",ix,iy,iz,x,y,z)
+      if self.easeDriver then
+        self.easeDriver:setLink(1,self,MOAITransform.ATTR_X_LOC,0)
+        self.easeDriver:setLink(1,self,MOAITransform.ATTR_Y_LOC,0)
+        self.easeDriver:setLink(1,self,MOAITransform.ATTR_Z_LOC,0)
+      end        
+      self.easeDriver = self:seekLoc(x,y,z, seektime, MOAIEaseType.LINEAR )
       self.moveStopAt = self.moveStartAt + seektime + 1
     end    
     self.moveStartAt = now()
