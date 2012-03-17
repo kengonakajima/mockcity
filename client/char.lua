@@ -37,7 +37,6 @@ function makeChar(id,x,y,z,deck, baseIndex )
   function ch:moveToGrid(x,y,z,state,nextms)
     local curx,cury,curz = self:getLoc()
     x,y,z = x*CELLUNITSZ+ self.ofsX, y*CELLUNITSZ+self.ofsY, z*CELLUNITSZ+self.ofsZ
-    print("moveToGrid: nextms:", nextms )
     
     local seektime
     if not self.nextms then
@@ -47,17 +46,13 @@ function makeChar(id,x,y,z,deck, baseIndex )
     end
     self.nextms = nextms
 
-    print("seektime:",seektime)    
     if seektime > 0 then
       if not self.prevX then
-        print("setloc 1:",x-0.1,y,z) 
         self:setLoc(x-0.1,y,z) -- need 0.1 to avoid moai bug?
       else
-        print("setloc 2:", self.prevX,self.prevY,self.prevZ)
         self:setLoc(self.prevX,self.prevY,self.prevZ)
       end
       local ix,iy,iz = int(x) % 32,int(y) % 32,int(z)%32
-      print("XXXXXXXXXXXXX:",ix,iy,iz,x,y,z)
       if self.easeDriver then
         self.easeDriver:setLink(1,self,MOAITransform.ATTR_X_LOC,0)
         self.easeDriver:setLink(1,self,MOAITransform.ATTR_Y_LOC,0)
@@ -67,7 +62,7 @@ function makeChar(id,x,y,z,deck, baseIndex )
       self.moveStopAt = self.moveStartAt + seektime + 1
     end    
     self.moveStartAt = now()
-    print("start:",self.moveStartAt, "stop:", self.moveStopAt)
+--    print("start:",self.moveStartAt, "stop:", self.moveStopAt)
     
     if state == CHARSTATE.DIED then
       self:setAnimType(CHARANIMTYPE.DIE )
